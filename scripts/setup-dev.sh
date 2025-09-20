@@ -97,19 +97,23 @@ setup_services() {
     
     cd devops
     
-    # Start MongoDB and Redis
-    docker-compose up -d mongodb redis
+    # Start Redis (SQLite is file-based, no container needed)
+    docker-compose up -d redis
     
     echo "⏳ Waiting for services to be ready..."
-    sleep 10
+    sleep 5
     
-    # Check if services are running
-    if docker-compose ps | grep -q "Up"; then
-        echo "✅ Database services are running!"
+    # Check if Redis is running
+    if docker-compose ps redis | grep -q "Up"; then
+        echo "✅ Redis service is running!"
     else
-        echo "❌ Failed to start database services"
+        echo "❌ Failed to start Redis service"
         exit 1
     fi
+    
+    # Create SQLite database directory
+    mkdir -p ../backend/data
+    echo "✅ SQLite database directory created!"
     
     cd ..
 }
@@ -122,6 +126,7 @@ create_directories() {
     mkdir -p backend/logs
     mkdir -p backend/uploads
     mkdir -p backend/temp
+    mkdir -p backend/data  # SQLite database directory
     
     # Frontend directories
     mkdir -p frontend/assets/images
@@ -190,7 +195,7 @@ show_completion_info() {
     echo "🌐 Your services will be available at:"
     echo "   • Backend API: http://localhost:5000"
     echo "   • Frontend App: http://localhost:19000 (Expo DevTools)"
-    echo "   • MongoDB: mongodb://localhost:27017"
+    echo "   • SQLite Database: backend/data/mental-wellness-ai.db"
     echo "   • Redis: redis://localhost:6379"
     echo ""
     echo "📚 Documentation:"

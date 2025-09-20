@@ -4,28 +4,8 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: mental-wellness-db
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: mental_wellness_ai
-    volumes:
-      - mongodb_data:/data/db
-      - ./mongodb/init-scripts:/docker-entrypoint-initdb.d:ro
-    networks:
-      - mental-wellness-network
-    ports:
-      - "27017:27017"
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/mental_wellness_ai --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+  # SQLite Database (file-based, no separate container needed)
+  # Database files will be stored in backend container volumes
 
   # Redis for session management and caching
   redis:
@@ -57,7 +37,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 5000
-      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/mental_wellness_ai?authSource=admin
+      DATABASE_PATH: /app/data/mental_wellness.db
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -73,13 +53,12 @@ services:
     volumes:
       - backend_logs:/app/logs
       - backend_uploads:/app/uploads
+      - sqlite_data:/app/data
     networks:
       - mental-wellness-network
     ports:
       - "5000:5000"
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -182,23 +161,25 @@ services:
 
   # Backup service
   backup:
-    image: mongo:7.0
+    image: alpine:latest
     container_name: mental-wellness-backup
     restart: "no"
     environment:
-      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/mental_wellness_ai?authSource=admin
+      DATABASE_PATH: /app/data/mental_wellness.db
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       S3_BUCKET: ${S3_BACKUP_BUCKET}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY}
     volumes:
       - backup_data:/backup
-      - ./scripts/backup.sh:/backup.sh:ro
+      - sqlite_data:/app/data:ro
+      - ./scripts/backup-sqlite.sh:/backup.sh:ro
     networks:
       - mental-wellness-network
     depends_on:
-      - mongodb
-    command: /bin/bash /backup.sh
+      - backend
+    command: /bin/sh /backup.sh
 
 networks:
   mental-wellness-network:
@@ -208,7 +189,7 @@ networks:
         - subnet: 172.20.0.0/16
 
 volumes:
-  mongodb_data:
+  sqlite_data:
     driver: local
   redis_data:
     driver: local

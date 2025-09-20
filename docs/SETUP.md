@@ -16,7 +16,7 @@ mental-wellness-ai-prototype/
 │   ├── package.json        # Backend dependencies
 │   ├── ai/                 # AI chatbot & crisis detection
 │   ├── routes/             # API routes (auth, chat, users)
-│   ├── models/             # MongoDB schemas
+│   ├── models/             # SQLite schemas
 │   ├── middlewares/        # Auth, HIPAA, rate limiting
 │   └── config/             # Database & app configuration
 ├── frontend/               # React Native App (Member 2)
@@ -41,7 +41,7 @@ mental-wellness-ai-prototype/
 
 ### Prerequisites
 - Node.js 18+
-- MongoDB 7.0+
+- SQLite 3+
 - Redis 7.0+
 - Docker & Docker Compose
 - Firebase Account

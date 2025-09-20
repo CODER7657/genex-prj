@@ -69,14 +69,6 @@ jobs:
     needs: security-scan
     
     services:
-      mongodb:
-        image: mongo:7.0
-        env:
-          MONGO_INITDB_ROOT_USERNAME: test
-          MONGO_INITDB_ROOT_PASSWORD: test123
-        ports:
-          - 27017:27017
-      
       redis:
         image: redis:7-alpine
         ports:
@@ -105,7 +97,7 @@ jobs:
         working-directory: ./backend
         env:
           NODE_ENV: test
-          MONGODB_URI: mongodb://test:test123@localhost:27017/mental_wellness_ai_test?authSource=admin
+          DATABASE_PATH: ./test.db
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
         run: npm test -- --coverage
@@ -114,7 +106,7 @@ jobs:
         working-directory: ./backend
         env:
           NODE_ENV: test
-          MONGODB_URI: mongodb://test:test123@localhost:27017/mental_wellness_ai_test?authSource=admin
+          DATABASE_PATH: ./test_integration.db
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
         run: npm run test:integration

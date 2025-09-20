@@ -1,0 +1,245 @@
+# Prometheus Alert Rules for Mental Wellness AI
+# HIPAA-compliant alerting for critical system health
+
+groups:
+  # Application Health Alerts
+  - name: application_health
+    rules:
+      - alert: BackendAPIDown
+        expr: up{job="backend-api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: backend
+          category: availability
+        annotations:
+          summary: "Backend API is down"
+          description: "The Mental Wellness AI backend API has been down for more than 30 seconds. This affects all user interactions."
+          runbook_url: "https://docs.mental-wellness-ai.com/runbooks/backend-down"
+
+      - alert: HighResponseTime
+        expr: http_request_duration_seconds{quantile="0.95"} > 2
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+          category: performance
+        annotations:
+          summary: "High API response time"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.method }} {{ $labels.route }}"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+          category: reliability
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.method }} {{ $labels.route }}"
+
+  # Database Health Alerts (SQLite + Redis)
+  - name: database_health
+    rules:
+      - alert: SQLiteDatabaseError
+        expr: sqlite_errors_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: sqlite
+          category: reliability
+        annotations:
+          summary: "SQLite database errors detected"
+          description: "SQLite database is experiencing errors. Check application logs for details."
+
+      - alert: DatabaseSizeAnomaly
+        expr: sqlite_database_size_bytes > 1073741824  # 1GB
+        for: 5m
+        labels:
+          severity: warning
+          service: sqlite
+          category: resource
+        annotations:
+          summary: "SQLite database size is large"
+          description: "SQLite database size is {{ $value | humanizeBytes }}, consider cleanup or archiving."
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: redis
+          category: availability
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache is not responding. Session management and caching are affected."
+
+      - alert: HighRedisMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+          category: resource
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+  # System Resource Alerts
+  - name: system_resources
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+          category: resource
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+          category: resource
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"}) < 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: system
+          category: resource
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }} {{ $labels.mountpoint }}"
+
+  # Security and Compliance Alerts
+  - name: security_compliance
+    rules:
+      - alert: UnauthorizedAccess
+        expr: rate(http_requests_total{status="401"}[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: warning
+          service: security
+          category: security
+        annotations:
+          summary: "High rate of unauthorized access attempts"
+          description: "Unauthorized access rate is {{ $value | humanizePercentage }}"
+
+      - alert: SuspiciousActivity
+        expr: rate(http_requests_total{status="403"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: security
+          category: security
+        annotations:
+          summary: "Suspicious activity detected"
+          description: "High rate of forbidden requests detected: {{ $value | humanizePercentage }}"
+
+      - alert: DataRetentionViolation
+        expr: time() - data_last_cleaned_timestamp > 86400
+        for: 5m
+        labels:
+          severity: critical
+          service: compliance
+          category: hipaa
+        annotations:
+          summary: "Data retention policy violation"
+          description: "Data cleanup has not run for more than 24 hours, violating HIPAA retention policies"
+
+  # Business Logic Alerts
+  - name: business_logic
+    rules:
+      - alert: CrisisDetectionFailure
+        expr: rate(crisis_detection_errors_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ai
+          category: safety
+        annotations:
+          summary: "Crisis detection system failure"
+          description: "The crisis detection system is experiencing errors. This is a safety-critical issue."
+
+      - alert: HighCrisisDetectionRate
+        expr: rate(crisis_detected_total[1h]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: ai
+          category: safety
+        annotations:
+          summary: "High crisis detection rate"
+          description: "Crisis detection rate is unusually high: {{ $value | humanizePercentage }}"
+
+      - alert: AIServiceFailure
+        expr: rate(ai_requests_total{status="error"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: ai
+          category: functionality
+        annotations:
+          summary: "AI service experiencing high error rate"
+          description: "AI service error rate is {{ $value | humanizePercentage }}"
+
+  # Network and Connectivity Alerts
+  - name: network_connectivity
+    rules:
+      - alert: HighNetworkLatency
+        expr: probe_duration_seconds > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: network
+          category: performance
+        annotations:
+          summary: "High network latency"
+          description: "Network latency to {{ $labels.instance }} is {{ $value }}s"
+
+      - alert: ServiceUnavailable
+        expr: probe_success == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: network
+          category: availability
+        annotations:
+          summary: "Service unavailable"
+          description: "Service {{ $labels.instance }} is not responding to health checks"
+
+  # Backup and Data Integrity Alerts
+  - name: backup_data_integrity
+    rules:
+      - alert: BackupFailure
+        expr: time() - backup_last_success_timestamp > 86400
+        for: 5m
+        labels:
+          severity: critical
+          service: backup
+          category: data_safety
+        annotations:
+          summary: "Backup has not completed successfully"
+          description: "No successful backup in the last 24 hours. Data safety is at risk."
+
+      - alert: BackupSizeAnomaly
+        expr: abs(backup_size_bytes - backup_size_bytes offset 7d) / backup_size_bytes offset 7d > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: backup
+          category: data_integrity
+        annotations:
+          summary: "Backup size anomaly detected"
+          description: "Backup size has changed by more than 50% compared to last week"

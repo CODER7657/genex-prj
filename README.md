@@ -8,7 +8,7 @@
   [![React Native](https://img.shields.io/badge/React%20Native-0.72-blue.svg)](https://reactnative.dev/)
   [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
   [![Express](https://img.shields.io/badge/Express-4.18-lightgrey.svg)](https://expressjs.com/)
-  [![MongoDB](https://img.shields.io/badge/MongoDB-7+-green.svg)](https://mongodb.com/)
+  [![SQLite](https://img.shields.io/badge/SQLite-3+-blue.svg)](https://sqlite.org/)
   [![Socket.IO](https://img.shields.io/badge/Socket.IO-4.7-black.svg)](https://socket.io/)
   [![Gemini AI](https://img.shields.io/badge/Gemini%20AI-Latest-orange.svg)](https://ai.google.dev/)
 </div>
@@ -73,7 +73,7 @@
 ```mermaid
 graph TB
     A[React Native Frontend] --> B[Express.js Backend]
-    B --> C[MongoDB Database]
+    B --> C[SQLite Database]
     B --> D[Gemini AI Service]
     B --> E[Socket.IO Real-time]
     B --> F[Crisis Detection AI]
@@ -111,7 +111,7 @@ graph TB
 
 - **Node.js** 18+ ([Download](https://nodejs.org/))
 - **npm** or **yarn** package manager
-- **MongoDB** ([Install locally](https://docs.mongodb.com/manual/installation/) or use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas))
+- **SQLite** (bundled with the application)
 - **Gemini API Key** ([Get from Google AI Studio](https://makersuite.google.com/app/apikey))
 
 ### ⚡ One-Command Setup
@@ -167,8 +167,7 @@ PORT=5000
 FRONTEND_URL=http://localhost:19006
 
 # Database Configuration
-MONGODB_URI=mongodb://localhost:27017/mental-wellness-ai
-# For MongoDB Atlas: mongodb+srv://<username>:<password>@cluster.mongodb.net/mental-wellness-ai
+DATABASE_PATH=./data/mental-wellness-ai.db
 
 # Authentication & Security
 JWT_SECRET=your-super-secure-jwt-secret-key-here
@@ -258,7 +257,7 @@ backend/
 │   ├── 💬 chat.js            # Chat & messaging routes
 │   ├── 👤 user.js            # User management routes
 │   └── 📊 assessment.js      # Mental health assessments
-├── 📁 models/                 # MongoDB schemas
+├── 📁 models/                 # SQLite schemas
 │   ├── 👤 User.js            # User data model
 │   ├── 💬 ChatSession.js     # Chat session model
 │   ├── 📝 Message.js         # Individual message model
@@ -284,9 +283,6 @@ npm install
 # Set up environment variables
 cp .env.example .env
 # Edit .env with your configuration
-
-# Start MongoDB (if running locally)
-mongod
 
 # Development mode (with auto-reload)
 npm run dev
@@ -689,12 +685,12 @@ npm run test:visual
 # Using Railway
 railway login
 railway init
-railway add database mongodb
+railway add database sqlite
 railway deploy
 
 # Using Heroku
 heroku create mental-wellness-api
-heroku addons:create mongolab:sandbox
+heroku addons:create sqlite3:free
 git push heroku main
 ```
 
@@ -743,20 +739,13 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/mental-wellness
+      - DATABASE_PATH=/app/data/mental-wellness.db
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-    depends_on:
-      - mongo
-      
-  mongo:
-    image: mongo:7
-    ports:
-      - "27017:27017"
     volumes:
-      - mongo_data:/data/db
-
+      - sqlite_data:/app/data
+      
 volumes:
-  mongo_data:
+  sqlite_data:
 ```
 
 ---

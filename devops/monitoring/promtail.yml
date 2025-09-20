@@ -1,0 +1,120 @@
+# Promtail Configuration for Log Shipping
+# Mental Wellness AI - Log collection and forwarding
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Backend application logs
+  - job_name: backend
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: backend
+          service: mental-wellness-api
+          environment: development
+          __path__: /var/log/backend/*.log
+
+  # Nginx access logs
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service: reverse-proxy
+          log_type: access
+          environment: development
+          __path__: /var/log/nginx/access.log
+
+  # Nginx error logs
+  - job_name: nginx-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service: reverse-proxy
+          log_type: error
+          environment: development
+          __path__: /var/log/nginx/error.log
+
+  # System logs
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          service: operating-system
+          environment: development
+          __path__: /var/log/syslog
+
+  # Docker container logs
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+
+# Pipeline stages for log processing
+  - job_name: backend-structured
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: backend-structured
+          service: mental-wellness-api
+          environment: development
+          __path__: /var/log/backend/*.log
+    pipeline_stages:
+      # Parse JSON logs from backend
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            message: message
+            service: service
+            userId: userId
+            sessionId: sessionId
+            requestId: requestId
+      
+      # Extract timestamp
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+      
+      # Set log level as label
+      - labels:
+          level:
+          service:
+      
+      # Mask sensitive data for HIPAA compliance
+      - replace:
+          expression: '(?i)(password|token|secret|key)=\S+'
+          replace: '${1}=***REDACTED***'
+      
+      # Drop health check logs to reduce noise
+      - drop:
+          expression: '.*GET /health.*'
+      
+      # Rate limiting for high-volume logs
+      - limit:
+          rate: 1000
+          burst: 2000
+          drop: true

@@ -1,0 +1,48 @@
+# Grafana Datasources Configuration
+# Mental Wellness AI - Data sources for monitoring dashboards
+
+apiVersion: 1
+
+datasources:
+  # Prometheus for metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    basicAuth: false
+    jsonData:
+      timeInterval: "5s"
+      queryTimeout: "60s"
+      httpMethod: "POST"
+    secureJsonData: {}
+
+  # Loki for logs
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    basicAuth: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: "prometheus-uid"
+          matcherRegex: "trace_id=(\\w+)"
+          name: "TraceID"
+          url: "$${__value.raw}"
+
+  # Optional: Add MongoDB datasource if direct DB monitoring is needed
+  # - name: MongoDB
+  #   type: grafana-mongodb-datasource
+  #   access: proxy
+  #   url: mongodb://mongodb:27017
+  #   database: mental_wellness_ai
+  #   editable: true
+  #   basicAuth: false
+  #   jsonData:
+  #     authType: "credentials"
+  #   secureJsonData:
+  #     username: "${MONGO_ROOT_USERNAME}"
+  #     password: "${MONGO_ROOT_PASSWORD}"

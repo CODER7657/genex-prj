@@ -1,0 +1,77 @@
+# Mental Wellness AI - Development Docker Compose
+# Simplified setup for local development
+
+version: '3.8'
+
+services:
+  # SQLite Database (file-based, no separate container needed)
+  # Database files will be stored in backend container volumes
+
+  # Redis for session management
+  redis:
+    image: redis:7-alpine
+    container_name: mental-wellness-redis-dev
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis_data:/data
+    networks:
+      - mental-wellness-network
+    ports:
+      - "6379:6379"
+
+  # Backend API Service
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: mental-wellness-backend-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 5000
+      DATABASE_PATH: /app/data/mental_wellness.db
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+    volumes:
+      - ../backend:/app
+      - /app/node_modules
+      - backend_logs:/app/logs
+      - sqlite_data:/app/data
+    networks:
+      - mental-wellness-network
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+    command: npm run dev
+
+  # Nginx for reverse proxy (optional in development)
+  nginx:
+    image: nginx:alpine
+    container_name: mental-wellness-nginx-dev
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - mental-wellness-network
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+networks:
+  mental-wellness-network:
+    driver: bridge
+
+volumes:
+  sqlite_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_logs:
+    driver: local

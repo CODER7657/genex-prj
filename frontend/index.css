@@ -140,6 +140,123 @@
   animation: shimmer 2s ease-in-out infinite;
 }
 
+/* Youth-focused animations */
+@keyframes wiggle {
+  0%, 7% { transform: rotateZ(0); }
+  15% { transform: rotateZ(-15deg); }
+  20% { transform: rotateZ(10deg); }
+  25% { transform: rotateZ(-10deg); }
+  30% { transform: rotateZ(6deg); }
+  35% { transform: rotateZ(-4deg); }
+  40%, 100% { transform: rotateZ(0); }
+}
+
+@keyframes typing {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+@keyframes blink {
+  50% { border-color: transparent; }
+}
+
+@keyframes floatBubble {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(1deg); }
+  66% { transform: translateY(5px) rotate(-1deg); }
+}
+
+@keyframes heartbeat {
+  0%, 14%, 28%, 42%, 70% { transform: scale(1); }
+  7%, 21%, 35% { transform: scale(1.1); }
+}
+
+@keyframes rainbow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Youth-focused utility classes */
+.animate-wiggle {
+  animation: wiggle 2s ease-in-out;
+}
+
+.animate-float-bubble {
+  animation: floatBubble 3s ease-in-out infinite;
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+.animate-typing {
+  overflow: hidden;
+  border-right: 2px solid #3b82f6;
+  white-space: nowrap;
+  animation: typing 2s steps(30), blink 0.75s step-end infinite;
+}
+
+.glass-morphism {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.glass-morphism-dark {
+  backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.gradient-rainbow {
+  background: linear-gradient(-45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3);
+  background-size: 400% 400%;
+  animation: rainbow 3s ease infinite;
+}
+
+.text-shadow-glow {
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.gen-z-button {
+  @apply relative overflow-hidden px-6 py-3 rounded-full font-semibold transition-all duration-300;
+  @apply bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600;
+  @apply text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1;
+}
+
+.gen-z-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.gen-z-button:hover::before {
+  left: 100%;
+}
+
+.mood-indicator {
+  @apply w-4 h-4 rounded-full inline-block mr-2 transition-all duration-300;
+}
+
+.mood-great { @apply bg-green-400 animate-heartbeat; }
+.mood-good { @apply bg-blue-400 animate-float-bubble; }
+.mood-okay { @apply bg-yellow-400 animate-pulse; }
+.mood-bad { @apply bg-orange-400 animate-bounce-gentle; }
+.mood-terrible { @apply bg-red-400 animate-wiggle; }
+
+.chat-streak-counter {
+  @apply bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+}
+
 /* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;

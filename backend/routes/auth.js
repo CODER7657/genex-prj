@@ -4,13 +4,12 @@
  */
 
 const express = require('express');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 
 const User = require('../models/User');
-const authMiddleware = require('../middlewares/auth');
+const { authMiddleware, passwordUtils, tokenUtils } = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -18,7 +17,9 @@ const router = express.Router();
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // limit each IP to 10 requests per windowMs
-  message: { error: 'Too many authentication attempts, please try again later.' }
+  message: {
+    error: 'Too many authentication attempts, please try again later.'
+  }
 });
 
 /**
@@ -27,13 +28,8 @@ const authLimiter = rateLimit({
  */
 router.post('/register', authLimiter, [
   body('email').optional().isEmail().normalizeEmail(),
-  body('password').optional().isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters'),
-  body('age').isInt({ min: 13, max: 120 })
-    .withMessage('Age must be between 13 and 120'),
-  body('anonymous').optional().isBoolean(),
-  body('termsAccepted').equals('true')
-    .withMessage('You must accept the terms and conditions')
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
+  body('anonymous').optional().isBoolean()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -44,10 +40,10 @@ router.post('/register', authLimiter, [
       });
     }
 
-    const { email, password, age, anonymous = true, termsAccepted } = req.body;
+    const { email, password, anonymous = false } = req.body;
 
-    // Check if user already exists (for non-anonymous)
-    if (email) {
+    // Check if user already exists (for non-anonymous users)
+    if (!anonymous && email) {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
         return res.status(400).json({
@@ -56,41 +52,48 @@ router.post('/register', authLimiter, [
       }
     }
 
-    // Create user
-    const userData = {
-      age,
-      anonymous,
-      termsAccepted: true,
-      registrationDate: new Date(),
-      isActive: true
-    };
-
-    if (!anonymous && email && password) {
-      userData.email = email;
-      userData.password = await bcrypt.hash(password, 12);
+    // Validate password strength
+    const passwordValidation = passwordUtils.validate(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({
+        error: 'Password does not meet requirements',
+        details: passwordValidation.errors
+      });
     }
 
+    // Create user data
+    const userData = {
+      anonymous,
+      password: await passwordUtils.hash(password),
+      isActive: true,
+      preferences: {
+        notifications: true,
+        dataSharing: false
+      }
+    };
+
+    if (!anonymous && email) {
+      userData.email = email;
+    }
+
+    // Create user
     const user = new User(userData);
     await user.save();
 
     // Generate JWT token
-    const token = jwt.sign(
-      { 
-        userId: user._id,
-        anonymous: user.anonymous 
-      },
-      process.env.JWT_SECRET || 'fallback-secret',
-      { expiresIn: '7d' }
-    );
+    const token = tokenUtils.generate({
+      userId: user._id,
+      email: user.email,
+      anonymous: user.anonymous
+    });
 
     res.status(201).json({
       message: 'User registered successfully',
       token,
       user: {
         id: user._id,
-        anonymous: user.anonymous,
-        age: user.age,
-        email: user.email || null
+        email: user.email,
+        anonymous: user.anonymous
       }
     });
 
@@ -98,7 +101,7 @@ router.post('/register', authLimiter, [
     console.error('Registration error:', error);
     res.status(500).json({
       error: 'Registration failed',
-      message: 'An error occurred during registration'
+      message: error.message
     });
   }
 });
@@ -109,7 +112,7 @@ router.post('/register', authLimiter, [
  */
 router.post('/login', authLimiter, [
   body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty().withMessage('Password is required')
+  body('password').exists()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -122,19 +125,19 @@ router.post('/login', authLimiter, [
 
     const { email, password } = req.body;
 
-    // Find user
-    const user = await User.findOne({ email, anonymous: false });
+    // Find user by email
+    const user = await User.findOne({ email, isActive: true });
     if (!user) {
       return res.status(401).json({
-        error: 'Invalid credentials'
+        error: 'Invalid email or password'
       });
     }
 
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Verify password
+    const isValidPassword = await passwordUtils.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({
-        error: 'Invalid credentials'
+        error: 'Invalid email or password'
       });
     }
 
@@ -143,14 +146,11 @@ router.post('/login', authLimiter, [
     await user.save();
 
     // Generate JWT token
-    const token = jwt.sign(
-      { 
-        userId: user._id,
-        anonymous: user.anonymous 
-      },
-      process.env.JWT_SECRET || 'fallback-secret',
-      { expiresIn: '7d' }
-    );
+    const token = tokenUtils.generate({
+      userId: user._id,
+      email: user.email,
+      anonymous: user.anonymous
+    });
 
     res.json({
       message: 'Login successful',
@@ -158,7 +158,6 @@ router.post('/login', authLimiter, [
       user: {
         id: user._id,
         email: user.email,
-        age: user.age,
         anonymous: user.anonymous
       }
     });
@@ -167,7 +166,7 @@ router.post('/login', authLimiter, [
     console.error('Login error:', error);
     res.status(500).json({
       error: 'Login failed',
-      message: 'An error occurred during login'
+      message: error.message
     });
   }
 });
@@ -186,14 +185,11 @@ router.post('/refresh', authMiddleware, async (req, res) => {
     }
 
     // Generate new token
-    const token = jwt.sign(
-      { 
-        userId: user._id,
-        anonymous: user.anonymous 
-      },
-      process.env.JWT_SECRET || 'fallback-secret',
-      { expiresIn: '7d' }
-    );
+    const token = tokenUtils.generate({
+      userId: user._id,
+      email: user.email,
+      anonymous: user.anonymous
+    });
 
     res.json({
       message: 'Token refreshed successfully',
@@ -203,43 +199,46 @@ router.post('/refresh', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Token refresh error:', error);
     res.status(500).json({
-      error: 'Token refresh failed'
+      error: 'Token refresh failed',
+      message: error.message
     });
   }
 });
 
 /**
  * POST /api/auth/logout
- * Logout user (invalidate token)
+ * Logout user (invalidate session)
  */
 router.post('/logout', authMiddleware, async (req, res) => {
   try {
-    // In a production environment, you might want to blacklist the token
-    // For now, we'll just return a success message
+    // In a production app, you'd want to blacklist the token
+    // For now, just clear the session
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destruction error:', err);
+      }
+    });
+
     res.json({
       message: 'Logout successful'
     });
+
   } catch (error) {
     console.error('Logout error:', error);
     res.status(500).json({
-      error: 'Logout failed'
+      error: 'Logout failed',
+      message: error.message
     });
   }
 });
 
 /**
- * GET /api/auth/me
- * Get current user information
+ * GET /api/auth/profile
+ * Get current user profile
  */
-router.get('/me', authMiddleware, async (req, res) => {
+router.get('/profile', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId)
-      .select('-password')
-      .populate('moodEntries', null, null, { 
-        sort: { createdAt: -1 }, 
-        limit: 5 
-      });
-
+    const user = await User.findById(req.user.userId).select('-password');
     if (!user) {
       return res.status(404).json({
         error: 'User not found'
@@ -249,46 +248,86 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.json({
       user: {
         id: user._id,
-        email: user.email || null,
-        age: user.age,
+        email: user.email,
         anonymous: user.anonymous,
-        registrationDate: user.registrationDate,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
         lastLogin: user.lastLogin,
-        preferences: user.preferences,
-        recentMoodEntries: user.moodEntries
+        preferences: user.preferences
       }
     });
 
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('Profile fetch error:', error);
     res.status(500).json({
-      error: 'Failed to get user information'
+      error: 'Failed to fetch profile',
+      message: error.message
     });
   }
 });
 
 /**
- * DELETE /api/auth/account
- * Delete user account and all associated data
+ * PUT /api/auth/profile
+ * Update user profile
  */
-router.delete('/account', authMiddleware, async (req, res) => {
+router.put('/profile', authMiddleware, [
+  body('email').optional().isEmail().normalizeEmail(),
+  body('preferences').optional().isObject()
+], async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
 
-    // Delete user and all associated data
-    await User.findByIdAndDelete(userId);
-    
-    // Additional cleanup for related collections would go here
-    // e.g., chat history, mood entries, etc.
+    const { email, preferences } = req.body;
+    const updates = {};
+
+    if (email) {
+      // Check if email is already in use by another user
+      const existingUser = await User.findOne({ 
+        email, 
+        _id: { $ne: req.user.userId }
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({
+          error: 'Email already in use by another user'
+        });
+      }
+      
+      updates.email = email;
+      updates.anonymous = false; // If setting email, no longer anonymous
+    }
+
+    if (preferences) {
+      updates.preferences = { ...updates.preferences, ...preferences };
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      updates,
+      { new: true }
+    ).select('-password');
 
     res.json({
-      message: 'Account deleted successfully'
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        anonymous: user.anonymous,
+        preferences: user.preferences
+      }
     });
 
   } catch (error) {
-    console.error('Account deletion error:', error);
+    console.error('Profile update error:', error);
     res.status(500).json({
-      error: 'Failed to delete account'
+      error: 'Profile update failed',
+      message: error.message
     });
   }
 });

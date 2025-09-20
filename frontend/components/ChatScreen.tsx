@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, Mood, MoodLog } from '../types';
-import { getChatResponse } from '../services/geminiService';
+import { apiService } from '../services/apiService';
 import { saveMoodLogs, loadMoodLogs, saveChatHistory, loadChatHistory, clearChatHistory } from '../services/storageService';
 import { voiceService } from '../services/voiceService';
 import { useTheme } from '../contexts/ThemeContext';
@@ -10,6 +10,7 @@ import MoodAnalytics from './MoodAnalytics';
 import WellnessResources from './WellnessResources';
 import VoiceControls from './VoiceControls';
 import GoalsAndReminders from './GoalsAndReminders';
+import CrisisAlert from './CrisisAlert';
 import { FaceSmileIcon, SendIcon } from './icons';
 
 // Define components outside to prevent re-creation on re-renders
@@ -47,11 +48,14 @@ const ChatScreen: React.FC = () => {
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const [showMoodModal, setShowMoodModal] = useState(false);
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [showResources, setShowResources] = useState(false);
     const [showVoiceSettings, setShowVoiceSettings] = useState(false);
     const [showGoalsReminders, setShowGoalsReminders] = useState(false);
+    const [showCrisisAlert, setShowCrisisAlert] = useState(false);
+    const [crisisLevel, setCrisisLevel] = useState<'low' | 'medium' | 'high'>('low');
     const [moodLogs, setMoodLogs] = useState<MoodLog[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +63,11 @@ const ChatScreen: React.FC = () => {
     useEffect(() => {
         const savedMessages = loadChatHistory();
         const savedMoodLogs = loadMoodLogs();
+        const savedSessionId = localStorage.getItem('currentSessionId');
+        
+        if (savedSessionId) {
+            setSessionId(savedSessionId);
+        }
         
         if (savedMessages.length > 0) {
             setMessages(savedMessages);
@@ -66,7 +75,7 @@ const ChatScreen: React.FC = () => {
             // Set default welcome message if no chat history
             const welcomeMessage: Message = { 
                 role: 'model', 
-                parts: [{ text: "Hello! I'm Aura, your AI wellness companion. How are you feeling today?" }] 
+                parts: [{ text: "Hello! I'm Aura, your AI wellness companion designed especially for you. I'm here to provide mental health support using evidence-based techniques. How are you feeling today?" }] 
             };
             setMessages([welcomeMessage]);
         }
@@ -74,19 +83,19 @@ const ChatScreen: React.FC = () => {
         setMoodLogs(savedMoodLogs);
     }, []);
 
-    // Save chat history whenever messages change
+    // Save chat history and session whenever messages change
     useEffect(() => {
         if (messages.length > 0) {
             saveChatHistory(messages);
         }
     }, [messages]);
 
-    // Save mood logs whenever they change
+    // Save session ID whenever it changes
     useEffect(() => {
-        if (moodLogs.length > 0) {
-            saveMoodLogs(moodLogs);
+        if (sessionId) {
+            localStorage.setItem('currentSessionId', sessionId);
         }
-    }, [moodLogs]);
+    }, [sessionId]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -95,6 +104,35 @@ const ChatScreen: React.FC = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading]);
+
+    // Auto-register user for demo purposes
+    useEffect(() => {
+        const initializeUser = async () => {
+            try {
+                // Check if we already have a token
+                if (apiService.getToken()) {
+                    return;
+                }
+
+                // Register a demo user
+                const userData = {
+                    username: `demo_user_${Date.now()}`,
+                    email: `demo_${Date.now()}@example.com`,
+                    password: 'Demo123!',
+                    age: 25,
+                    termsAccepted: true
+                };
+
+                await apiService.register(userData);
+                console.log('✅ User registered and authenticated');
+            } catch (error) {
+                console.error('❌ Auto-registration failed:', error);
+                setError('Failed to connect to backend. Please check if the server is running.');
+            }
+        };
+
+        initializeUser();
+    }, []);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -107,22 +145,63 @@ const ChatScreen: React.FC = () => {
         setError(null);
 
         try {
-            const response = await getChatResponse(userMessage.parts[0].text);
-            const aiMessage: Message = { role: 'model', parts: [{ text: response.text }] };
+            // Send message to backend API with current session
+            const response = await apiService.sendMessage(
+                userMessage.parts[0].text, 
+                sessionId || undefined
+            );
+            
+            console.log('🔄 Chat Response:', response);
+            
+            // Update session ID if provided (new session created or existing session)
+            if (response.data?.sessionId && response.data.sessionId !== sessionId) {
+                console.log('📝 Session ID updated:', response.data.sessionId);
+                setSessionId(response.data.sessionId);
+            }
+            
+            // Get AI response from backend response
+            const aiResponseText = response.data?.aiResponse?.content || 
+                                  response.data?.response || 
+                                  response.aiResponse || 
+                                  "I'm here to help you navigate your mental wellness journey.";
+                                  
+            const aiMessage: Message = { 
+                role: 'model', 
+                parts: [{ text: aiResponseText }] 
+            };
+            
             setMessages(prev => [...prev, aiMessage]);
+            
+            // Handle crisis detection
+            if (response.data?.aiResponse?.crisisDetected) {
+                const level = response.data.aiResponse.crisisLevel || 'low';
+                console.log('🚨 Crisis detected:', level);
+                setCrisisLevel(level as 'low' | 'medium' | 'high');
+                setShowCrisisAlert(true);
+                
+                // Log crisis event for analytics
+                console.log('Crisis triggers:', response.data.aiResponse.crisisTriggers);
+            }
             
             // Auto-speak AI response if voice is enabled
             if (preferences.voiceEnabled && preferences.voiceAutoSpeak) {
-                voiceService.speak(response.text, {
+                voiceService.speak(aiResponseText, {
                     rate: 0.9,
                     pitch: 1,
                     volume: 0.8
                 });
             }
         } catch (err) {
+            console.error('💥 Chat error:', err);
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             setError(errorMessage);
-            const errorResponse: Message = { role: 'model', parts: [{ text: "I'm sorry, I'm having a little trouble right now. Please try again in a moment." }] };
+            
+            const errorResponse: Message = { 
+                role: 'model', 
+                parts: [{ 
+                    text: "I'm sorry, I'm experiencing some technical difficulties right now. Your mental wellness is important to me, so please try again in a moment. If you're in crisis, please contact emergency services or a crisis helpline immediately." 
+                }] 
+            };
             setMessages(prev => [...prev, errorResponse]);
         } finally {
             setIsLoading(false);
@@ -136,12 +215,14 @@ const ChatScreen: React.FC = () => {
     };
 
     const handleClearChat = () => {
-        if (window.confirm('Are you sure you want to clear your chat history? This action cannot be undone.')) {
+        if (window.confirm('Are you sure you want to start a new conversation? This will clear your chat history and start fresh.')) {
             const welcomeMessage: Message = { 
                 role: 'model', 
-                parts: [{ text: "Hello! I'm Aura, your AI wellness companion. How are you feeling today?" }] 
+                parts: [{ text: "Hello! I'm Aura, your AI wellness companion designed especially for you. I'm here to provide mental health support using evidence-based techniques. How are you feeling today?" }] 
             };
             setMessages([welcomeMessage]);
+            setSessionId(null); // Clear session to start fresh
+            localStorage.removeItem('currentSessionId'); // Clear from storage
             clearChatHistory();
         }
     };
@@ -321,6 +402,30 @@ const ChatScreen: React.FC = () => {
                 </form>
             </footer>
             </div>
+            
+            {/* Crisis Alert Modal */}
+            {showCrisisAlert && (
+                <CrisisAlert 
+                    level={crisisLevel}
+                    onClose={() => setShowCrisisAlert(false)}
+                    onContactCrisisLine={() => {
+                        // Try to open phone dialer first, fallback to tel link
+                        if (navigator.userAgent.includes('Mobile')) {
+                            window.location.href = 'tel:988';
+                        } else {
+                            window.open('tel:988', '_blank');
+                        }
+                    }}
+                    onContactEmergency={() => {
+                        // Emergency contact
+                        if (navigator.userAgent.includes('Mobile')) {
+                            window.location.href = 'tel:911';
+                        } else {
+                            window.open('tel:911', '_blank');
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 };

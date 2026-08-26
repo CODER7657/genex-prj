@@ -22,6 +22,11 @@ jobs:
   security-scan:
     name: Security & Code Quality
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Without this the SARIF upload fails wherever the default token is
+      # read-only, taking the whole pipeline down with it.
+      security-events: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -54,14 +59,21 @@ jobs:
 
       - name: HIPAA Compliance Check
         run: |
-          echo "Running HIPAA compliance checks..."
-          # Check for hardcoded secrets
-          if grep -r "password\|secret\|key" --include="*.js" --include="*.py" --exclude-dir=node_modules .; then
-            echo "❌ Potential hardcoded secrets found"
+          echo "Checking for hardcoded secrets..."
+          # Looks for a secret being *assigned a literal value*, not for the
+          # word "key". The previous pattern was password|secret|key across
+          # every .js and .py file, which matches apiKey, publicKey, keys()
+          # and so on — it could never pass, and since every other job needs
+          # this one, nothing in this pipeline could ever run.
+          if grep -rInE \
+               '(password|passwd|secret|api_?key|access_?token|private_?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}["'"'"']' \
+               --include='*.js' --include='*.ts' --include='*.py' \
+               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=tests \
+               --exclude='*.example.*' --exclude='*.test.*' --exclude='*.spec.*' . ; then
+            echo "::error::Hardcoded secret assignments found (listed above)."
             exit 1
           fi
-          echo "✅ No hardcoded secrets detected"
-
+          echo "No hardcoded secret assignments detected."
   # Backend Testing
   backend-test:
     name: Backend Tests
@@ -163,7 +175,12 @@ jobs:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Publishing and deploying are opt-in. This pipeline had never run: it
+    # lived in devops/.github/workflows/, which GitHub does not look in.
+    # Moving it to the root switched it on, and these jobs push images to
+    # ghcr.io and SSH into servers to redeploy — so they stay off until the
+    # ENABLE_DEPLOY repository variable is set to true.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_DEPLOY == 'true'
 
     permissions:
       contents: read
@@ -210,7 +227,7 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' && vars.ENABLE_DEPLOY == 'true'
     environment: staging
 
     steps:
@@ -250,7 +267,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_DEPLOY == 'true'
     environment: production
 
     steps:
@@ -366,7 +383,7 @@ jobs:
     name: Deployment Notification
     runs-on: ubuntu-latest
     needs: [deploy-production, compliance-report, backup-verification]
-    if: always() && github.ref == 'refs/heads/main'
+    if: always() && github.ref == 'refs/heads/main' && vars.ENABLE_DEPLOY == 'true'
 
     steps:
       - name: Notify Team

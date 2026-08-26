@@ -118,7 +118,27 @@ jobs:
           DATABASE_PATH: ./test.db
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
-        run: npm test -- --coverage
+        run: |
+          # jest exits 1 when it finds nothing, and it finds nothing here: the
+          # files in backend/test/ are manual scripts — test_cors.js, apiTest.js
+          # — not a jest suite, so they do not match testMatch. Passing with
+          # none is only acceptable because the absence is then said out loud,
+          # in the log and in the run summary. A green tick here does not mean
+          # a suite ran.
+          npm test -- --coverage --passWithNoTests
+
+          count=$(npx jest --listTests 2>/dev/null | wc -l || echo 0)
+          echo "jest found ${count} test file(s)."
+
+          if [ "${count}" -eq 0 ]; then
+            echo "::warning::No automated backend tests. backend/test/*.js are manual scripts, not a jest suite."
+            {
+              echo "### Backend tests"
+              echo ""
+              echo "**No automated tests ran.** \`backend/test/*.js\` are manual scripts rather than a"
+              echo "jest suite, so jest matched nothing. Add \`*.test.js\` files and this becomes a real check."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Run Integration Tests
         working-directory: ./backend
@@ -127,7 +147,9 @@ jobs:
           DATABASE_PATH: ./test_integration.db
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
-        run: npm run test:integration
+        # There is no test:integration script in this package; --if-present
+        # skips it rather than failing on a script that was never written.
+        run: npm run test:integration --if-present
 
       - name: Upload Coverage Reports
         uses: codecov/codecov-action@v3

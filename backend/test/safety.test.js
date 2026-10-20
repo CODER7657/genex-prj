@@ -67,6 +67,14 @@ describe('negation and history', () => {
   });
 });
 
+describe('exported cases for the Python experiments', () => {
+  test('docs/eval/eval_cases.json matches the JS cases and router', () => {
+    const { build } = require('../scripts/export-eval-cases');
+    const onDisk = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'docs', 'eval', 'eval_cases.json'), 'utf8'));
+    expect(onDisk).toEqual(build());
+  });
+});
+
 describe('normalisation', () => {
   test('curly apostrophes, spacing and shorthand', () => {
     expect(normalise('I’m   gonna   do it')).toBe("i'm going to do it");

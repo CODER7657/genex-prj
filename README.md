@@ -46,7 +46,7 @@
 - **Crisis routing** - every message is routed CRISIS, THIRD_PARTY (worried about someone else), CONCERN or NONE by phrase rules in `backend/ai/safety/`
 - **Fixed safety replies** - a possible crisis gets a reviewed reply with the right helpline, never an LLM-generated one
 - **Region-aware helplines** - India (Tele-MANAS 14416, 112), US (988, 911), UK, or a worldwide directory, set by `CRISIS_REGION`
-- **Measured, with known limits** - catches 49/49 crisis messages it was built on, but only **3/20 held-out ones**; see [docs/SAFETY_EVAL.md](docs/SAFETY_EVAL.md). This is not a clinical tool and does not assess anyone's risk
+- **Measured, with known limits** - catches 49/49 crisis messages it was built on, but only **3/20 held-out ones**; an embedding layer reaches 14/20 in an experiment that is not deployed yet. See [docs/SAFETY_EVAL.md](docs/SAFETY_EVAL.md). This is not a clinical tool and does not assess anyone's risk
 
 ### 📊 **Mood & Wellness Tracking**
 - **Daily Mood Check-ins** - Visual mood tracking interface

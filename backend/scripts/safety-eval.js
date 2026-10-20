@@ -4,9 +4,12 @@
  *
  *   node scripts/safety-eval.js            table + every miss
  *   node scripts/safety-eval.js --markdown the table as markdown, for docs/SAFETY_EVAL.md
+ *   add --holdout to score the held-out set instead of the main one
  */
 
-const { cases } = require('../ai/safety/evalCases');
+const { cases } = process.argv.includes('--holdout')
+  ? require('../ai/safety/evalHoldout')
+  : require('../ai/safety/evalCases');
 const { score, summaryRows } = require('../ai/safety/score');
 const { legacyRoute } = require('../ai/safety/legacyDetector');
 

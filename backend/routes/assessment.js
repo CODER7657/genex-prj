@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const safety = require('../ai/safety/crisisResponse');
 const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 
@@ -261,13 +262,7 @@ router.post('/phq9', [
         severity,
         recommendation,
         resources: score >= 10 ? {
-          crisis_lines: [
-            {
-              name: "National Suicide Prevention Lifeline",
-              number: "988",
-              description: "24/7 free and confidential support"
-            }
-          ],
+          crisis_lines: safety.resources().crisis_lines,
           professional_help: [
             "Contact your primary care doctor",
             "Find a local mental health provider",

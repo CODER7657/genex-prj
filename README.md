@@ -42,11 +42,11 @@
 - **Personalized Interactions** - Adapts to user communication style
 - **Multi-language Support** - International accessibility
 
-### 🚨 **Crisis Detection & Safety**
-- **Real-time Sentiment Analysis** - Monitors emotional state
-- **Crisis Level Assessment** - 5-tier risk evaluation system
-- **Emergency Resources** - Immediate access to professional help
-- **HIPAA Compliance** - Secure, private data handling
+### 🚨 **Crisis Safety**
+- **Crisis routing** - every message is routed CRISIS, THIRD_PARTY (worried about someone else), CONCERN or NONE by phrase rules in `backend/ai/safety/`
+- **Fixed safety replies** - a possible crisis gets a reviewed reply with the right helpline, never an LLM-generated one
+- **Region-aware helplines** - India (Tele-MANAS 14416, 112), US (988, 911), UK, or a worldwide directory, set by `CRISIS_REGION`
+- **Measured, with known limits** - catches 49/49 crisis messages it was built on, but only **3/20 held-out ones**; see [docs/SAFETY_EVAL.md](docs/SAFETY_EVAL.md). This is not a clinical tool and does not assess anyone's risk
 
 ### 📊 **Mood & Wellness Tracking**
 - **Daily Mood Check-ins** - Visual mood tracking interface
@@ -76,7 +76,7 @@ graph TB
     B --> C[SQLite Database]
     B --> D[Gemini AI Service]
     B --> E[Socket.IO Real-time]
-    B --> F[Crisis Detection AI]
+    B --> F[Crisis Routing - rules + fixed replies]
     
     subgraph "Frontend Features"
         A1[3D Grid UI]
@@ -89,7 +89,7 @@ graph TB
     subgraph "Backend Services"
         B1[Authentication]
         B2[Chat Processing]
-        B3[Crisis Detection]
+        B3[Crisis Routing]
         B4[Data Analytics]
         B5[File Storage]
     end
@@ -180,9 +180,7 @@ GEMINI_API_KEY=your-gemini-api-key-here
 OPENAI_API_KEY=your-openai-api-key-here-optional
 
 # Crisis Detection
-CRISIS_THRESHOLD_HIGH=0.8
-CRISIS_THRESHOLD_MEDIUM=0.6
-CRISIS_THRESHOLD_LOW=0.4
+CRISIS_REGION=IN   # IN, US or UK; unset lists India, the US and a worldwide directory
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=900000
@@ -196,7 +194,6 @@ LOG_FILE_PATH=./logs
 # External Services
 TWILIO_ACCOUNT_SID=your-twilio-sid-optional
 TWILIO_AUTH_TOKEN=your-twilio-token-optional
-EMERGENCY_CONTACT_NUMBER=+1-800-273-8255
 
 # File Upload
 UPLOAD_MAX_SIZE=10485760
@@ -264,7 +261,8 @@ backend/
 │   └── 📊 MoodLog.js         # Mood tracking model
 ├── 📁 ai/                     # AI service integrations
 │   ├── 🤖 chatService.js     # Gemini AI chat processing
-│   └── 🚨 crisisDetection.js # Crisis detection algorithms
+│   ├── 🚨 safety/            # Crisis routing, fixed safety replies, evaluation cases
+│   └── crisisDetection.js    # Unused older prototype (see safety/)
 ├── 📁 middlewares/            # Express middlewares
 │   ├── 🔐 auth.js            # JWT authentication
 │   ├── 🛡️ hipaa.js           # HIPAA compliance

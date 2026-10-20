@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const safety = require('../ai/safety/crisisResponse');
 const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 
@@ -300,25 +301,7 @@ router.post('/crisis-event', [
     res.status(201).json({
       success: true,
       message: 'Crisis event recorded successfully',
-      resources: {
-        crisis_lines: [
-          {
-            name: "National Suicide Prevention Lifeline",
-            number: "988",
-            description: "24/7 free and confidential support"
-          },
-          {
-            name: "Crisis Text Line",
-            number: "Text HOME to 741741",
-            description: "24/7 text-based crisis support"
-          }
-        ],
-        immediate_actions: [
-          "Reach out to a trusted friend, family member, or counselor",
-          "Go to your nearest emergency room if in immediate danger",
-          "Call 911 if you're in immediate danger"
-        ]
-      }
+      resources: safety.resources()
     });
 
   } catch (error) {

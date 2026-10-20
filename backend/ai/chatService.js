@@ -8,6 +8,8 @@ const OpenAI = require('openai');
 const natural = require('natural');
 const Sentiment = require('sentiment');
 const winston = require('winston');
+const { route: routeRisk } = require('./safety/riskDetector');
+const safety = require('./safety/crisisResponse');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -62,23 +64,8 @@ try {
 // Initialize sentiment analyzer
 const sentiment = new Sentiment();
 
-// Crisis keywords and patterns (enhanced)
-const CRISIS_KEYWORDS = [
-  'suicide', 'kill myself', 'end my life', 'want to die', 'better off dead',
-  'self-harm', 'hurt myself', 'cut myself', 'overdose', 'pills',
-  'hopeless', 'worthless', 'nobody cares', 'give up', 'can\'t go on',
-  'end it all', 'no point', 'done with life', 'tired of living'
-];
-
-const CRISIS_PATTERNS = [
-  /I (want to|will|am going to) (kill|hurt|harm) myself/i,
-  /I'm (going to|planning to) (die|kill myself|end it)/i,
-  /life isn't worth living/i,
-  /(nobody|no one) would miss me/i,
-  /planning to (hurt|harm|kill)/i,
-  /have nothing to live for/i,
-  /ready to give up/i
-];
+// Crisis routing lives in ./safety/riskDetector.js (the old keyword lists are frozen in
+// ./safety/legacyDetector.js for comparison only).
 
 // Positive indicators for mood tracking
 const POSITIVE_KEYWORDS = [
@@ -141,8 +128,16 @@ class ChatService {
       // Get conversation context from database or memory
       const context = await this.getConversationContext(userId, sessionId);
       
-      // Generate AI response
-      const aiResponse = await this.generateResponse(message, context, crisisAnalysis, sentimentAnalysis);
+      // A possible crisis, or someone else at risk, gets the fixed safety reply, never
+      // an LLM one. Distress keeps the LLM reply but always carries a helpline.
+      const region = safety.regionFrom();
+      let aiResponse = safety.safetyReply(crisisAnalysis, region);
+      if (!aiResponse) {
+        aiResponse = await this.generateResponse(message, context, crisisAnalysis, sentimentAnalysis);
+        if (crisisAnalysis.route === 'CONCERN') {
+          aiResponse = { ...aiResponse, content: aiResponse.content + safety.concernFooter(region) };
+        }
+      }
       
       // Store conversation in database
       await this.storeConversation(userId, sessionId, message, aiResponse, crisisAnalysis, sentimentAnalysis);
@@ -158,7 +153,9 @@ class ChatService {
         crisisDetected: crisisAnalysis.detected,
         crisisLevel: crisisAnalysis.level,
         crisisTriggers: crisisAnalysis.triggers,
-        emergencyResources: crisisAnalysis.detected ? this.getEmergencyResources() : null,
+        crisisRoute: crisisAnalysis.route,
+        crisisImminent: crisisAnalysis.imminent,
+        emergencyResources: crisisAnalysis.detected ? safety.resources(region) : null,
         recommendations: this.generateRecommendations(sentimentAnalysis, crisisAnalysis),
         timestamp: new Date().toISOString(),
         sessionId: sessionId || this.generateSessionId(),
@@ -191,7 +188,7 @@ class ChatService {
       
       // Return safe fallback response
       return {
-        content: "I'm having some technical difficulties right now, but I want you to know that I'm here to support you. If you're in crisis or need immediate help, please contact 988 (Suicide & Crisis Lifeline) or your local emergency services.",
+        content: "I'm having some technical difficulties right now, but I want you to know that I'm here to support you. If you're in crisis or need immediate help, please contact " + safety.helplineSentence() + ".",
         source: 'error_fallback',
         sentiment: { score: 0, label: 'neutral' },
         crisisDetected: false,
@@ -205,63 +202,13 @@ class ChatService {
    * Enhanced crisis detection with user history
    */
   async detectCrisis(message, userId) {
-    const lowerMessage = message.toLowerCase();
-    let detected = false;
-    let level = 'none';
-    let triggers = [];
-    let confidence = 0;
-
-    // Check for crisis keywords
-    CRISIS_KEYWORDS.forEach(keyword => {
-      if (lowerMessage.includes(keyword)) {
-        detected = true;
-        triggers.push(keyword);
-        confidence += 0.1;
-      }
-    });
-
-    // Check for crisis patterns
-    CRISIS_PATTERNS.forEach((pattern, index) => {
-      if (pattern.test(message)) {
-        detected = true;
-        triggers.push(`pattern_${index + 1}`);
-        confidence += 0.15;
-      }
-    });
-
-    // Enhanced context analysis
-    const contextWords = lowerMessage.split(' ');
-    let contextScore = 0;
-    
-    // Check for escalating language
-    const escalatingWords = ['always', 'never', 'everything', 'nothing', 'everyone', 'nobody'];
-    escalatingWords.forEach(word => {
-      if (contextWords.includes(word)) {
-        contextScore += 0.05;
-      }
-    });
-
-    // Check for time-specific crisis language
-    const immediateWords = ['tonight', 'today', 'now', 'soon', 'planning'];
-    immediateWords.forEach(word => {
-      if (contextWords.includes(word)) {
-        contextScore += 0.1;
-        triggers.push(`immediate_${word}`);
-      }
-    });
-
-    confidence += contextScore;
-
-    // Determine crisis level based on triggers and confidence
-    if (detected) {
-      if (triggers.some(t => ['suicide', 'kill myself', 'end my life', 'overdose'].includes(t)) || confidence > 0.3) {
-        level = 'high';
-      } else if (triggers.some(t => ['self-harm', 'hurt myself', 'hopeless', 'worthless'].includes(t)) || confidence > 0.2) {
-        level = 'medium';
-      } else {
-        level = 'low';
-      }
-    }
+    // Routing is decided by ai/safety/riskDetector.js, measured in docs/SAFETY_EVAL.md.
+    // `level` keeps the low/medium/high values the frontend already understands.
+    const routed = routeRisk(message);
+    const detected = routed.route !== 'NONE';
+    let level = { CRISIS: 'high', THIRD_PARTY: 'medium', CONCERN: 'medium', NONE: 'none' }[routed.route];
+    const triggers = [...routed.signals];
+    const confidence = detected ? 1 : 0;
 
     // Check user's recent crisis history if available
     try {
@@ -282,11 +229,14 @@ class ChatService {
       logger.warn('Could not check crisis history:', error.message);
     }
 
-    return { 
-      detected, 
-      level, 
-      triggers, 
-      confidence: Math.min(confidence, 1.0),
+    return {
+      detected,
+      level,
+      route: routed.route,
+      imminent: routed.imminent,
+      subject: routed.route === 'THIRD_PARTY' ? 'other' : 'self',
+      triggers,
+      confidence,
       timestamp: new Date().toISOString()
     };
   }
@@ -745,7 +695,7 @@ IMMEDIATE RESPONSE REQUIREMENTS:
         type: 'immediate_action',
         priority: 'high',
         message: 'Please consider reaching out to a crisis counselor or trusted person immediately.',
-        resources: ['988 Suicide & Crisis Lifeline', 'Crisis Text Line: Text HOME to 741741']
+        resources: safety.resources().crisis_lines.map(l => `${l.name}: ${l.number}`)
       });
     }
 
@@ -795,47 +745,11 @@ IMMEDIATE RESPONSE REQUIREMENTS:
   }
 
   /**
-   * Get emergency resources
-   */
-  getEmergencyResources() {
-    return {
-      crisis_lines: [
-        {
-          name: "National Suicide Prevention Lifeline",
-          number: "988",
-          description: "24/7 free and confidential support"
-        },
-        {
-          name: "Crisis Text Line",
-          number: "Text HOME to 741741",
-          description: "24/7 text-based crisis support"
-        }
-      ],
-      immediate_actions: [
-        "Reach out to a trusted friend, family member, or counselor",
-        "Go to your nearest emergency room",
-        "Call 911 if you're in immediate danger",
-        "Remove any means of self-harm from your environment"
-      ],
-      resources: [
-        {
-          name: "National Institute of Mental Health",
-          url: "https://www.nimh.nih.gov/health/find-help"
-        },
-        {
-          name: "Mental Health America",
-          url: "https://www.mhanational.org/finding-help"
-        }
-      ]
-    };
-  }
-
-  /**
    * Get enhanced fallback response when AI is not available
    */
   getFallbackResponse(message, crisisAnalysis, sentimentAnalysis) {
     if (crisisAnalysis.detected) {
-      const crisisResponse = "I'm very concerned about what you've shared. Please know that you're not alone and help is available. I strongly encourage you to reach out to a crisis helpline immediately:\n\n🆘 **Crisis Resources:**\n• 988 (Suicide & Crisis Lifeline) - Call or text\n• Crisis Text Line: Text HOME to 741741\n• Your local emergency services: 911\n\nYour life has value and there are people who want to help you through this difficult time. Please reach out now.";
+      const crisisResponse = "I'm very concerned about what you've shared. Please know that you're not alone and help is available. I strongly encourage you to reach out to a crisis helpline immediately: " + safety.helplineSentence() + ".\n\nYour life has value and there are people who want to help you through this difficult time. Please reach out now.";
       
       return crisisResponse;
     }
@@ -857,7 +771,7 @@ IMMEDIATE RESPONSE REQUIREMENTS:
     }
     
     if (sentimentAnalysis && sentimentAnalysis.label === 'very_negative') {
-      return "I can sense that you're going through something really tough right now. Those difficult feelings are completely valid, and I want you to know that it's okay to not be okay sometimes. Even though I'm having some technical difficulties, please know that support is available to you. If you're in crisis, please reach out to 988 or your local crisis line. Otherwise, talking to a trusted friend, family member, or counselor can really help during hard times.";
+      return "I can sense that you're going through something really tough right now. Those difficult feelings are completely valid, and I want you to know that it's okay to not be okay sometimes. Even though I'm having some technical difficulties, please know that support is available to you. If you're in crisis, please reach out to " + safety.helplineSentence() + ". Otherwise, talking to a trusted friend, family member, or counselor can really help during hard times.";
     }
 
     if (lowerMessage.includes('anxious') || lowerMessage.includes('anxiety') || 
@@ -882,7 +796,7 @@ IMMEDIATE RESPONSE REQUIREMENTS:
     }
     
     // Default supportive response
-    return "I'm here to listen and support you, and I appreciate you reaching out to me. That takes courage. While I'm having some technical difficulties right now, I want you to know that I care about how you're doing. Could you tell me more about what's going on for you today? Sometimes just talking through what's on our minds can help us feel a little better. If you're in crisis or need immediate help, please don't hesitate to contact 988 or your local emergency services.";
+    return "I'm here to listen and support you, and I appreciate you reaching out to me. That takes courage. While I'm having some technical difficulties right now, I want you to know that I care about how you're doing. Could you tell me more about what's going on for you today? Sometimes just talking through what's on our minds can help us feel a little better. If you're in crisis or need immediate help, please don't hesitate to contact " + safety.helplineSentence() + ".";
   }
 
   /**

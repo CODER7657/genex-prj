@@ -1,4 +1,9 @@
 /**
+ * NOT USED BY THE APP. Nothing imports this file. Crisis routing lives in
+ * ai/safety/riskDetector.js and is measured in docs/SAFETY_EVAL.md. Kept for the
+ * team's reference; its classifier is trained on 15 example sentences.
+ */
+/**
  * Crisis Detection Service
  * Advanced crisis detection with ML models and pattern matching
  */

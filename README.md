@@ -46,7 +46,9 @@
 - **Crisis routing** - every message is routed CRISIS, THIRD_PARTY (worried about someone else), CONCERN or NONE by phrase rules in `backend/ai/safety/`
 - **Fixed safety replies** - a possible crisis gets a reviewed reply with the right helpline, never an LLM-generated one
 - **Region-aware helplines** - India (Tele-MANAS 14416, 112), US (988, 911), UK, or a worldwide directory, set by `CRISIS_REGION`
-- **Measured, with known limits** - catches 49/49 crisis messages it was built on, but only **3/20 held-out ones**; an embedding layer reaches 14/20 in an experiment that is not deployed yet. See [docs/SAFETY_EVAL.md](docs/SAFETY_EVAL.md). This is not a clinical tool and does not assess anyone's risk
+- **Optional LLM risk judge** - with `RISK_JUDGE=groq` and a `GROQ_API_KEY`, a Groq-hosted safety classifier (`openai/gpt-oss-safeguard-20b`) reads every message the rules did not route CRISIS. It can only raise the route, never lower it, and if it times out or fails the rule result stands. Without a key the app runs on the rules alone
+- **Output checker** - every companion LLM reply is checked for method details, discouraging help, or claiming to be a therapist or doctor, and replaced by a fixed reply if it fails
+- **Measured, with known limits** - on a fresh held-out set (74 cases, sealed before any run), crisis messages reaching the safety reply went from **3/35 with rules alone to 26/35 with rules + judge**, with imminent cases 6/10. It still misses 9/35, and rules alone already raise 3/20 false alarms on harmless messages that mention suicide for study or news, which the judge cannot undo. The cases were written for the project with an AI assistant, not taken from real users. See [docs/SAFETY_EVAL.md](docs/SAFETY_EVAL.md). This is safety-evaluation work, not a clinical tool, and it does not assess anyone's risk
 
 ### 📊 **Mood & Wellness Tracking**
 - **Daily Mood Check-ins** - Visual mood tracking interface
@@ -181,6 +183,8 @@ OPENAI_API_KEY=your-openai-api-key-here-optional
 
 # Crisis Detection
 CRISIS_REGION=IN   # IN, US or UK; unset lists India, the US and a worldwide directory
+RISK_JUDGE=        # set to groq to turn on the LLM risk judge
+GROQ_API_KEY=      # needed only with RISK_JUDGE=groq
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=900000

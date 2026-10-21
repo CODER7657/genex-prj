@@ -10,6 +10,9 @@ const Sentiment = require('sentiment');
 const winston = require('winston');
 const { route: routeRisk } = require('./safety/riskDetector');
 const safety = require('./safety/crisisResponse');
+const { buildSystemPrompt } = require('./companionPrompt');
+const riskJudge = require('./safety/riskJudge');
+const { guardedReply } = require('./safety/guardedReply');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -120,7 +123,7 @@ class ChatService {
       logger.info(`Processing message for user: ${userId.substring(0, 8)}...`);
 
       // Enhanced crisis detection
-      const crisisAnalysis = await this.detectCrisis(message, userId);
+      let crisisAnalysis = await this.detectCrisis(message, userId);
       
       // Enhanced sentiment analysis
       const sentimentAnalysis = this.analyzeSentiment(message);
@@ -130,14 +133,25 @@ class ChatService {
       
       // A possible crisis, or someone else at risk, gets the fixed safety reply, never
       // an LLM one. Distress keeps the LLM reply but always carries a helpline.
+      // With RISK_JUDGE=groq the LLM judge may escalate the rule route (never lower
+      // it), and every LLM reply passes the output checker. See ai/safety/guardedReply.js.
       const region = safety.regionFrom();
-      let aiResponse = safety.safetyReply(crisisAnalysis, region);
-      if (!aiResponse) {
-        aiResponse = await this.generateResponse(message, context, crisisAnalysis, sentimentAnalysis);
-        if (crisisAnalysis.route === 'CONCERN') {
-          aiResponse = { ...aiResponse, content: aiResponse.content + safety.concernFooter(region) };
-        }
+      const judge = riskJudge.judgeEnabled()
+        ? () => riskJudge.judgeOrNull(message, { timeoutMs: Number(process.env.RISK_JUDGE_TIMEOUT_MS) || 2500, log: logger })
+        : null;
+      const guarded = await guardedReply({
+        rule: crisisAnalysis,
+        judge,
+        region,
+        generate: () => this.generateResponse(message, context, crisisAnalysis, sentimentAnalysis),
+      });
+      if (guarded.decision.route !== crisisAnalysis.route || guarded.decision.imminent !== crisisAnalysis.imminent) {
+        crisisAnalysis = this.withRoute(crisisAnalysis, guarded.decision);
       }
+      if (guarded.check && !guarded.check.ok) {
+        logger.warn(`output checker replaced an LLM reply: ${guarded.check.violations.map(v => v.rule).join(', ')}`);
+      }
+      const aiResponse = guarded.reply;
       
       // Store conversation in database
       await this.storeConversation(userId, sessionId, message, aiResponse, crisisAnalysis, sentimentAnalysis);
@@ -238,6 +252,24 @@ class ChatService {
       triggers,
       confidence,
       timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * crisisAnalysis updated after the risk judge escalated the route.
+   */
+  withRoute(analysis, decision) {
+    const level = { CRISIS: 'high', THIRD_PARTY: 'medium', CONCERN: 'medium', NONE: 'none' }[decision.route];
+    return {
+      ...analysis,
+      detected: decision.route !== 'NONE',
+      level,
+      route: decision.route,
+      imminent: decision.imminent,
+      subject: decision.route === 'THIRD_PARTY' ? 'other' : 'self',
+      triggers: [...analysis.triggers, ...(decision.judge ? [`judge:${decision.judge.label}`] : [])],
+      confidence: decision.route !== 'NONE' ? 1 : 0,
+      decidedBy: decision.decidedBy,
     };
   }
 
@@ -390,69 +422,7 @@ class ChatService {
    * Build enhanced system prompt for AI
    */
   buildSystemPrompt(crisisAnalysis, sentimentAnalysis) {
-    let prompt = `You are a compassionate AI mental health companion designed to support young people (ages 13-25). 
-
-CORE PRINCIPLES:
-- Be empathetic, non-judgmental, and genuinely caring
-- Use age-appropriate language that feels natural and relatable to Gen-Z
-- Validate both physical and emotional experiences
-- Show genuine concern for their wellbeing
-- Encourage professional help when appropriate
-- Never provide medical diagnoses or specific treatment advice
-- Focus on active listening, emotional support, and practical comfort
-
-COMMUNICATION STYLE:
-- Warm, authentic, and understanding - avoid sounding robotic or clinical
-- Use "I" statements and reflective listening
-- Express genuine empathy: "That sounds really tough" or "I'm sorry you're dealing with this"
-- Ask caring follow-up questions to show interest
-- Acknowledge the connection between physical symptoms and mental wellness
-- Be conversational but meaningful (2-4 sentences)
-- Match their emotional tone appropriately
-
-PHYSICAL SYMPTOMS SUPPORT:
-- Acknowledge physical discomfort with genuine empathy
-- Recognize the mind-body connection (stress can cause headaches, etc.)
-- Suggest gentle comfort measures without medical advice
-- Validate that physical symptoms can affect mood and mental state
-- Show care about their overall wellbeing
-
-SAFETY PROTOCOLS:
-- If you detect crisis language, prioritize safety and provide resources
-- Always encourage professional support for serious mental health concerns
-- Maintain appropriate boundaries as an AI companion
-
-CURRENT CONTEXT:`;
-
-    // Add sentiment context
-    if (sentimentAnalysis) {
-      prompt += `\n- User's current emotional state: ${sentimentAnalysis.label} (score: ${sentimentAnalysis.score})`;
-      
-      if (sentimentAnalysis.indicators.length > 0) {
-        const indicators = sentimentAnalysis.indicators.map(i => i.word).join(', ');
-        prompt += `\n- Key emotional indicators: ${indicators}`;
-      }
-    }
-
-    // Add crisis context
-    if (crisisAnalysis.detected) {
-      prompt += `\n\n⚠️ CRISIS DETECTED - LEVEL: ${crisisAnalysis.level.toUpperCase()}
-- Confidence: ${(crisisAnalysis.confidence * 100).toFixed(1)}%
-- Triggers detected: ${crisisAnalysis.triggers.join(', ')}
-
-IMMEDIATE RESPONSE REQUIREMENTS:
-- Acknowledge their pain and validate their feelings
-- Express genuine concern for their safety
-- Provide immediate crisis resources
-- Encourage professional help urgently
-- Be direct but compassionate about seeking help
-- Do NOT minimize their feelings or give false reassurance`;
-    } else {
-      prompt += `\n\n- No crisis indicators detected
-- Focus on supportive conversation and emotional validation`;
-    }
-
-    return prompt;
+    return buildSystemPrompt(crisisAnalysis, sentimentAnalysis);
   }
 
   /**

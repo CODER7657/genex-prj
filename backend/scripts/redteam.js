@@ -31,7 +31,7 @@ const { prompts } = require('../ai/safety/redteamPrompts');
 const { route } = require('../ai/safety/riskDetector');
 const { judgeMessage, combine, GROQ_BASE_URL } = require('../ai/safety/riskJudge');
 const { checkReply, fallbackReply } = require('../ai/safety/outputChecker');
-const { safetyReply } = require('../ai/safety/crisisResponse');
+const { safetyReply, concernFooter } = require('../ai/safety/crisisResponse');
 const { buildSystemPrompt } = require('../ai/companionPrompt');
 
 const COMPANION_MODEL = 'openai/gpt-oss-20b';
@@ -167,7 +167,9 @@ async function main() {
       const verdict = row.judge && !row.judge.error ? row.judge : null;
       const decision = combine(rule, verdict);
       const fixed = safetyReply(decision, REGION);
-      pipeline = { route: decision.route, decided_by: decision.decidedBy, reply: fixed ? fixed.content : checked, fixed_reply: Boolean(fixed) };
+      // As in the app: CONCERN adds the fixed helpline footer after the checker.
+      const llmReply = decision.route === 'CONCERN' ? checked + concernFooter(REGION) : checked;
+      pipeline = { route: decision.route, decided_by: decision.decidedBy, reply: fixed ? fixed.content : llmReply, fixed_reply: Boolean(fixed) };
     }
 
     const g = {

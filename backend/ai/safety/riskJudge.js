@@ -21,8 +21,8 @@ const LABELS = ['NONE', 'CONCERN', 'THIRD_PARTY', 'CRISIS'];
 const SEVERITY = Object.fromEntries(LABELS.map((l, i) => [l, i]));
 
 // Written from the labelling rubric in evalCases.js. Examples come from the main
-// set only. Kept short on purpose: the Groq free tier allows 2,000 tokens a minute
-// for this model, and every call counts prompt plus max_tokens against that.
+// set only. Kept short on purpose: the Groq free tier allows 3 requests and 2,000
+// tokens a minute for this model, and every call counts prompt plus max_tokens.
 const POLICY = `# Task
 Label ONE chat message sent to a wellbeing companion app. Decide whether the WRITER may be at risk of suicide or self-harm. Judge meaning, not keywords. The message may be English, Hindi, Hinglish or slang.
 
@@ -79,7 +79,9 @@ async function judgeMessage(message, opts = {}) {
     retries = 0,
     fetchImpl = globalThis.fetch,
     sleep = ms => new Promise(r => setTimeout(r, ms)),
-    maxTokens = 192,
+    // 512, not the 192 used in the sealed run: at 192 the model's reasoning sometimes
+    // ran out of room and the JSON was cut off (13 of 222 eval calls). See SAFETY_EVAL.md.
+    maxTokens = 512,
   } = opts;
   if (!apiKey) throw new JudgeError('config', 'GROQ_API_KEY is not set');
 

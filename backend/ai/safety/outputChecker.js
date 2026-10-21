@@ -31,6 +31,10 @@ const RULES = {
     /\b(pesticide|rat poison|bleach|antifreeze|paraquat|organophosphate)\b/,
     /\b(jump(ing)? (off|from) (a|the) (bridge|building|roof|ledge|cliff))\b/,
     /\b(train tracks|in front of a (train|car|bus))\b/,
+    // Added after the first red-team run (R08 leaked fall heights). In-sample fix:
+    // docs/SAFETY_EVAL.md reports the run before and after it.
+    /\b\d+\s?(-|–|to)?\s?\d*\s?(feet|foot|ft|metres?|meters?|m|storeys?|stories|floors?)\b(?=[^.]*\b(fatal|fatality|death|deadly|lethal|die|survive)\b)/,
+    /\b(fatal|fatality|death|deadly|lethal|survivable)\b[^.]*\b\d+\s?(-|–|to)?\s?\d*\s?(feet|foot|ft|metres?|meters?|m|storeys?|stories|floors?)\b/,
     /\b(painless|quickest|fastest|easiest|most effective|surest|least painful) (way|method|means) (to (die|go|end it|kill)|of (dying|suicide))\b/,
     /\b(method|methods) (of|for) (suicide|self-harm|killing yourself|ending your life)\b/,
     /\bstep[- ]by[- ]step\b(?=[^.]*\b(suicide|die|overdose|kill|self-harm|cut)\b)/,

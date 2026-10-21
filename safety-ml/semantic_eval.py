@@ -96,8 +96,13 @@ def main() -> None:
 
     data = json.load(open(args.cases, encoding="utf-8"))
     main_cases, held = data["main"], data["holdout"]
-    X_all = embed([c["text"] for c in main_cases + held])
-    X_main, X_held = X_all[: len(main_cases)], X_all[len(main_cases):]
+    # Held-out v2 is optional so older exports still run. It is scored with the same
+    # model and threshold as v1, both fixed from the main set alone.
+    held2 = data.get("holdout2", [])
+    X_all = embed([c["text"] for c in main_cases + held + held2])
+    X_main = X_all[: len(main_cases)]
+    X_held = X_all[len(main_cases): len(main_cases) + len(held)]
+    X_held2 = X_all[len(main_cases) + len(held):]
     y_main = [c["expected"] for c in main_cases]
 
     # Out-of-fold probabilities on the main set, for choosing t without the held-out set.
@@ -141,12 +146,23 @@ def main() -> None:
             for c, r, s, k, p in zip(held, held_rules, held_sem, held_comb, held_probs)
         ],
     }
+    if held2:
+        p2 = probs_for(final, X_held2)
+        s2 = [semantic_route(p, chosen) for p in p2]
+        k2 = [combine(c["rules_route"], s) for c, s in zip(held2, s2)]
+        r2 = [c["rules_route"] for c in held2]
+        result["holdout2"] = {"rules_only": score(held2, r2), "semantic_only": score(held2, s2), "combined": score(held2, k2)}
+        result["holdout2_cases"] = [
+            {"id": c["id"], "expected": c["expected"], "rules": r, "semantic": s, "combined": k, "p_crisis": round(p["CRISIS"], 3)}
+            for c, r, s, k, p in zip(held2, r2, s2, k2, p2)
+        ]
     print("<<<SEMANTIC_RESULTS>>>")
     print(json.dumps(result, separators=(",", ":"), ensure_ascii=False))
     print("<<<END_SEMANTIC_RESULTS>>>")
-    for name, s in result["holdout"].items():
-        print(f"holdout {name:14s} crisis {s['crisis'][0]}/{s['crisis'][1]}  false crisis {s['false_crisis']}"
-              f"  concern {s['concern'][0]}/{s['concern'][1]}  third party {s['third_party'][0]}/{s['third_party'][1]}")
+    for split in ("holdout", "holdout2"):
+        for name, s in result.get(split, {}).items():
+            print(f"{split} {name:14s} crisis {s['crisis'][0]}/{s['crisis'][1]}  false crisis {s['false_crisis']}"
+                  f"  concern {s['concern'][0]}/{s['concern'][1]}  third party {s['third_party'][0]}/{s['third_party'][1]}")
 
 
 if __name__ == "__main__":

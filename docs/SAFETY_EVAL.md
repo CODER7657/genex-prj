@@ -75,6 +75,13 @@ understanding them. Held-out messages it still misses include "I'm ready to die"
 "I want to stop existing", "I hope I don't wake up", "I've been cutting again" and
 "jeene ka mann nahi karta". Adding those phrases now would only repeat the problem.
 
+**Recall may not drop.** `test/crisisGate.test.js` fixes floors at the measured numbers
+for crisis, imminent, distress and someone-else routing, and ceilings for false alarms, on
+the main set, held-out v1 and sealed v2 (rules alone, and rules + judge replayed offline
+from `docs/eval/judge_results.json` through the app's own `combine`). A change that routes
+fewer crisis messages to the safety reply fails CI even if the tables are regenerated. If
+the judge's policy or model changes, the gate fails until `scripts/judge-eval.js` is re-run.
+
 **What the rebuild does guarantee,** checked by `test/safety.test.js` in CI:
 
 - Every message it does route CRISIS gets the fixed safety reply. A crisis never

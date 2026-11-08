@@ -75,7 +75,7 @@ production.
 
 ## Run it locally
 
-Needs Node 18+.
+Needs Node 22+.
 
 ```bash
 # API on :5000

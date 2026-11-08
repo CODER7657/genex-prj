@@ -1,911 +1,126 @@
-# 🧠 Mental Wellness AI - Full Stack Application
+# Aura
 
-<div align="center">
-  <img width="100" alt="Mental Wellness AI Logo" src="https://github.com/user-attachments/assets/mental-wellness-logo.png" />
-  
-  **An AI-powered mental health companion with crisis detection, mood tracking, and professional wellness resources.**
-  
-  [![React Native](https://img.shields.io/badge/React%20Native-0.72-blue.svg)](https://reactnative.dev/)
-  [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-  [![Express](https://img.shields.io/badge/Express-4.18-lightgrey.svg)](https://expressjs.com/)
-  [![SQLite](https://img.shields.io/badge/SQLite-3+-blue.svg)](https://sqlite.org/)
-  [![Socket.IO](https://img.shields.io/badge/Socket.IO-4.7-black.svg)](https://socket.io/)
-  [![Gemini AI](https://img.shields.io/badge/Gemini%20AI-Latest-orange.svg)](https://ai.google.dev/)
-</div>
+A mental-wellness chat companion whose crisis routing is measured, not assumed: a message
+that may signal suicide risk gets a fixed, reviewed reply with the right helpline, never
+an LLM-generated one.
 
----
+[![CI](https://github.com/CODER7657/genex-prj/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/CODER7657/genex-prj/actions/workflows/ci-cd.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 📋 Table of Contents
+**Live:** not deployed yet. A hosted web build is planned; until then, run it locally
+(below). This is safety-evaluation work on synthetic messages, **not a clinical tool**.
 
-- [🌟 Features](#-features)
-- [🏗️ Architecture](#️-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [⚙️ Environment Setup](#️-environment-setup)
-- [🔧 Backend Setup](#-backend-setup)
-- [🎨 Frontend Setup](#-frontend-setup)
-- [🔗 API Documentation](#-api-documentation)
-- [🗄️ Database Schema](#️-database-schema)
-- [🧪 Testing](#-testing)
-- [🚀 Deployment](#-deployment)
-- [📱 Mobile App](#-mobile-app)
-- [🛡️ Security & Privacy](#️-security--privacy)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+## Measured results
 
----
+Crisis routing on held-out messages the system was never tuned on (v2 sealed and scored 2026-10-21; synthetic,
+written and committed before any run). Full method, per-case results and every miss:
+[`docs/SAFETY_EVAL.md`](docs/SAFETY_EVAL.md).
 
-## 🌟 Features
+| Sealed held-out set v2 (74 cases) | Phrase rules only | **Rules + LLM risk judge** |
+|---|---|---|
+| Crisis messages routed to the safety reply | 3/35 (9%) | **26/35 (74%)** |
+| Crisis messages given at least a helpline | 3/35 (9%) | **28/35 (80%)** |
+| Distress messages given support | 2/11 | **11/11** |
+| Someone-else-at-risk answered as such | 0/8 | **5/8** |
+| Harmless messages treated as a crisis | 3/20 (15%) | 3/20 (15%) |
 
-### 🤖 **AI-Powered Chat**
-- **Gemini AI Integration** - Advanced natural language processing
-- **Context-Aware Responses** - Maintains conversation context
-- **Personalized Interactions** - Adapts to user communication style
-- **Multi-language Support** - International accessibility
+| Other checks | Result |
+|---|---|
+| Main set (107 cases, used to build the rules) | 49/49 crisis routed, 0/36 false alarms |
+| Held-out v1 (41 cases), rules only | 3/20 crisis routed, 0/11 false alarms |
+| Red team (30 adversarial prompts): attacks that got through | 2/30 model alone, **1/30** full pipeline |
+| Embedding classifier (multilingual-e5-small) on v2, as a comparison | 14/35 alone, 16/35 with rules |
 
-### 🚨 **Crisis Safety**
-- **Crisis routing** - every message is routed CRISIS, THIRD_PARTY (worried about someone else), CONCERN or NONE by phrase rules in `backend/ai/safety/`
-- **Fixed safety replies** - a possible crisis gets a reviewed reply with the right helpline, never an LLM-generated one
-- **Region-aware helplines** - India (Tele-MANAS 14416, 112), US (988, 911), UK, or a worldwide directory, set by `CRISIS_REGION`
-- **Optional LLM risk judge** - with `RISK_JUDGE=groq` and a `GROQ_API_KEY`, a Groq-hosted safety classifier (`openai/gpt-oss-safeguard-20b`) reads every message the rules did not route CRISIS. It can only raise the route, never lower it, and if it times out or fails the rule result stands. Without a key the app runs on the rules alone
-- **Output checker** - every companion LLM reply is checked for method details, discouraging help, or claiming to be a therapist or doctor, and replaced by a fixed reply if it fails
-- **Measured, with known limits** - on a fresh held-out set (74 cases, sealed before any run), crisis messages reaching the safety reply went from **3/35 with rules alone to 26/35 with rules + judge**, with imminent cases 6/10. It still misses 9/35, and rules alone already raise 3/20 false alarms on harmless messages that mention suicide for study or news, which the judge cannot undo. The cases were written for the project with an AI assistant, not taken from real users. See [docs/SAFETY_EVAL.md](docs/SAFETY_EVAL.md). This is safety-evaluation work, not a clinical tool, and it does not assess anyone's risk
+Reproduce the rule-based numbers (no network):
 
-### 📊 **Mood & Wellness Tracking**
-- **Daily Mood Check-ins** - Visual mood tracking interface
-- **Analytics Dashboard** - Comprehensive mood trends
-- **Goal Setting** - Personalized wellness objectives
-- **Progress Monitoring** - Track improvement over time
+```bash
+cd backend
+node scripts/safety-eval.js              # main set, every miss listed
+node scripts/safety-eval.js --holdout    # held-out v1
+```
 
-### 🎨 **Modern UI/UX**
-- **3D Grid Background** - Immersive visual experience
-- **Glass Morphism Design** - Modern, accessible interface
-- **Dark/Light Themes** - User preference support
-- **Responsive Design** - Mobile-first approach
+The judge numbers come from `node scripts/judge-eval.js --set holdout2` (needs a Groq
+key); its raw outputs are committed in [`docs/eval/judge_results.json`](docs/eval/judge_results.json).
 
-### 🔊 **Voice & Accessibility**
-- **Voice Input/Output** - Hands-free interaction
-- **Text-to-Speech** - AI response narration
-- **Screen Reader Support** - Full accessibility compliance
-- **Keyboard Navigation** - Complete keyboard accessibility
-
----
-
-## 🏗️ Architecture
+## How it works
 
 ```mermaid
-graph TB
-    A[React Native Frontend] --> B[Express.js Backend]
-    B --> C[SQLite Database]
-    B --> D[Gemini AI Service]
-    B --> E[Socket.IO Real-time]
-    B --> F[Crisis Routing - rules + fixed replies]
-    
-    subgraph "Frontend Features"
-        A1[3D Grid UI]
-        A2[Glass Morphism]
-        A3[Voice Controls]
-        A4[Mood Tracking]
-        A5[Real-time Chat]
-    end
-    
-    subgraph "Backend Services"
-        B1[Authentication]
-        B2[Chat Processing]
-        B3[Crisis Routing]
-        B4[Data Analytics]
-        B5[File Storage]
-    end
-    
-    subgraph "Database Collections"
-        C1[Users]
-        C2[Chat Sessions]
-        C3[Messages]
-        C4[Mood Logs]
-        C5[Assessments]
-    end
+flowchart LR
+    U[Browser: React + Vite] -->|POST /api/chat/message| R[Phrase rules<br/>backend/ai/safety]
+    R -->|CRISIS| F[Fixed safety reply<br/>+ regional helplines]
+    R -->|CONCERN / THIRD_PARTY / NONE| J{RISK_JUDGE=groq?}
+    J -->|raises to CRISIS| F
+    J -->|otherwise| G[Gemini reply]
+    G --> C[Output checker]
+    C -->|fails| X[Fixed fallback reply]
+    C -->|passes| U
+    F --> U
+    X --> U
 ```
 
----
+Every message is routed **CRISIS**, **THIRD_PARTY** (worried about someone else),
+**CONCERN** or **NONE** by phrase rules in [`backend/ai/safety/`](backend/ai/safety). A
+CRISIS route always gets a fixed, reviewed reply, so a crisis never depends on the LLM
+being up or on how it would phrase things. With `RISK_JUDGE=groq`, a Groq-hosted safety
+classifier (`openai/gpt-oss-safeguard-20b`) reads every message the rules did not route
+CRISIS and may raise it, never lower it. Every Gemini reply passes an output checker
+(method details, discouraging help, claiming to be a professional) before it is shown.
+Helplines follow `CRISIS_REGION` (India: Tele-MANAS 14416 and 112; US: 988 and 911; UK);
+with no region set the reply lists India, the US and findahelpline.com.
 
-## 🚀 Quick Start
+Around the chat: mood check-ins and trends, goals and reminders, wellness resources,
+voice input and read-aloud (the browser's Web Speech API), light and dark themes. The API
+is Express on Node, with SQLite in development and Postgres via `DATABASE_URL` in
+production.
 
-### Prerequisites
+## Run it locally
 
-- **Node.js** 18+ ([Download](https://nodejs.org/))
-- **npm** or **yarn** package manager
-- **SQLite** (bundled with the application)
-- **Gemini API Key** ([Get from Google AI Studio](https://makersuite.google.com/app/apikey))
-
-### ⚡ One-Command Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/your-username/mental-wellness-ai.git
-cd mental-wellness-ai
-
-# Run the complete setup script
-./scripts/setup-dev.sh
-```
-
-### 🔥 Manual Setup (Recommended for Development)
+Needs Node 18+.
 
 ```bash
-# 1. Clone and navigate
-git clone https://github.com/your-username/mental-wellness-ai.git
-cd mental-wellness-ai
-
-# 2. Install dependencies for both frontend and backend
-npm run install:all
-
-# 3. Set up environment variables
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-
-# 4. Start both servers concurrently
+# API on :5000
+cd backend
+npm ci
+cp ../.env.example .env        # set GEMINI_API_KEY; JWT_SECRET and SESSION_SECRET to long random strings
 npm run dev
+
+# Web app on :5173 (in a second terminal)
+cd frontend
+npm ci
+npm run dev                    # calls http://localhost:5000/api unless VITE_API_URL is set
 ```
 
-**Your application will be running at:**
-- 🎨 **Frontend**: http://localhost:19006 (Expo Web)
-- 🔧 **Backend**: http://localhost:5000 (Express API)
-- 📱 **Mobile**: Use Expo Go app to scan QR code
+Optional: `CRISIS_REGION=IN|US|UK`, and `RISK_JUDGE=groq` with `GROQ_API_KEY` to turn on
+the LLM risk judge. Keys live only in the git-ignored `.env`.
 
----
-
-## ⚙️ Environment Setup
-
-### 🔧 Backend Environment (`.env`)
-
-Create `backend/.env` with the following configuration:
-
-```bash
-# =============================================================================
-# MENTAL WELLNESS AI BACKEND CONFIGURATION
-# =============================================================================
-
-# Server Configuration
-NODE_ENV=development
-PORT=5000
-FRONTEND_URL=http://localhost:19006
-
-# Database Configuration
-DATABASE_PATH=./data/mental-wellness-ai.db
-
-# Authentication & Security
-JWT_SECRET=your-super-secure-jwt-secret-key-here
-JWT_EXPIRE=7d
-BCRYPT_SALT_ROUNDS=12
-SESSION_SECRET=your-session-secret-key-here
-
-# AI Services
-GEMINI_API_KEY=your-gemini-api-key-here
-OPENAI_API_KEY=your-openai-api-key-here-optional
-
-# Crisis Detection
-CRISIS_REGION=IN   # IN, US or UK; unset lists India, the US and a worldwide directory
-RISK_JUDGE=        # set to groq to turn on the LLM risk judge
-GROQ_API_KEY=      # needed only with RISK_JUDGE=groq
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-CHAT_RATE_LIMIT_MAX=30
-
-# Logging
-LOG_LEVEL=info
-LOG_FILE_PATH=./logs
-
-# External Services
-TWILIO_ACCOUNT_SID=your-twilio-sid-optional
-TWILIO_AUTH_TOKEN=your-twilio-token-optional
-
-# File Upload
-UPLOAD_MAX_SIZE=10485760
-ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif
-
-# Email Configuration (Optional)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-```
-
-### 🎨 Frontend Environment (`.env`)
-
-Create `frontend/.env` with the following configuration:
-
-```bash
-# =============================================================================
-# MENTAL WELLNESS AI FRONTEND CONFIGURATION
-# =============================================================================
-
-# API Configuration
-EXPO_PUBLIC_API_URL=http://localhost:5000/api
-EXPO_PUBLIC_SOCKET_URL=http://localhost:5000
-
-# Gemini AI (Client-side backup)
-EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-api-key-here
-
-# App Configuration
-EXPO_PUBLIC_APP_NAME=Mental Wellness AI
-EXPO_PUBLIC_APP_VERSION=1.0.0
-
-# Feature Flags
-EXPO_PUBLIC_ENABLE_VOICE=true
-EXPO_PUBLIC_ENABLE_ANALYTICS=true
-EXPO_PUBLIC_ENABLE_CRISIS_DETECTION=true
-
-# Theme Configuration
-EXPO_PUBLIC_DEFAULT_THEME=light
-EXPO_PUBLIC_ENABLE_3D_BACKGROUND=true
-
-# Development
-EXPO_PUBLIC_DEBUG_MODE=true
-EXPO_PUBLIC_API_TIMEOUT=10000
-```
-
----
-
-## 🔧 Backend Setup
-
-### 📁 Project Structure
-
-```
-backend/
-├── 📄 server.js              # Main server entry point
-├── 📁 routes/                 # API route definitions
-│   ├── 🔐 auth.js            # Authentication routes
-│   ├── 💬 chat.js            # Chat & messaging routes
-│   ├── 👤 user.js            # User management routes
-│   └── 📊 assessment.js      # Mental health assessments
-├── 📁 models/                 # SQLite schemas
-│   ├── 👤 User.js            # User data model
-│   ├── 💬 ChatSession.js     # Chat session model
-│   ├── 📝 Message.js         # Individual message model
-│   └── 📊 MoodLog.js         # Mood tracking model
-├── 📁 ai/                     # AI service integrations
-│   ├── 🤖 chatService.js     # Gemini AI chat processing
-│   ├── 🚨 safety/            # Crisis routing, fixed safety replies, evaluation cases
-│   └── crisisDetection.js    # Unused older prototype (see safety/)
-├── 📁 middlewares/            # Express middlewares
-│   ├── 🔐 auth.js            # JWT authentication
-│   ├── 🛡️ hipaa.js           # HIPAA compliance
-│   └── ⚠️ errorHandler.js    # Global error handling
-└── 📁 tests/                  # Backend test suites
-```
-
-### 🚀 Starting the Backend
+## Test it
 
 ```bash
 cd backend
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Development mode (with auto-reload)
-npm run dev
-
-# Production mode
-npm start
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint:fix
+npx jest           # 259 tests, no network: routing guarantees, helplines, output checker
+npm run lint
 ```
 
-### 📊 Backend API Health Check
-
-```bash
-# Test server connectivity
-curl http://localhost:5000/api/health
-
-# Expected response:
-{
-  "status": "healthy",
-  "timestamp": "2025-09-20T10:30:00.000Z",
-  "services": {
-    "database": "connected",
-    "ai": "operational",
-    "memory": "12.5MB"
-  }
-}
-```
-
----
-
-## 🎨 Frontend Setup
-
-### 📁 Project Structure
-
-```
-frontend/
-├── 📄 App.js                 # Main application component
-├── 📁 components/             # Reusable UI components
-│   ├── 💬 ChatScreen.tsx     # Main chat interface
-│   ├── 😊 MoodCheckIn.tsx    # Mood tracking component
-│   ├── 📊 MoodAnalytics.tsx  # Analytics dashboard
-│   ├── 🎤 VoiceControls.tsx  # Voice interaction
-│   └── 🎯 GoalsReminders.tsx # Goal management
-├── 📁 screens/                # Screen components
-├── 📁 services/               # API & external services
-│   ├── 🔌 apiService.js      # Backend API integration
-│   ├── 🤖 geminiService.js   # Direct AI service calls
-│   ├── 🎤 voiceService.js    # Speech recognition/synthesis
-│   └── 💾 storageService.js  # Local data persistence
-├── 📁 hooks/                  # Custom React hooks
-│   ├── 🔐 useAuth.js         # Authentication state
-│   └── 🎨 useTheme.js        # Theme management
-├── 📁 contexts/               # React context providers
-├── 📁 assets/                 # Static assets & styling
-│   ├── 🎨 theme.js           # Design system configuration
-│   └── 🖼️ images/           # Image assets
-└── 📁 types/                  # TypeScript type definitions
-```
-
-### 🚀 Starting the Frontend
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Start development server
-npm start
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### 📱 Platform Support
-
-| Platform | Status | Launch Command |
-|----------|--------|----------------|
-| 🌐 **Web** | ✅ Ready | `npm start` → Press `w` |
-| 📱 **iOS** | ✅ Ready | `npm start` → Press `i` |
-| 🤖 **Android** | ✅ Ready | `npm start` → Press `a` |
-
----
-
-## 🔗 API Documentation
-
-### 🔐 Authentication Endpoints
-
-#### Register User
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "email": "user@example.com",        # Optional for anonymous
-  "password": "securePassword123",    # Optional for anonymous
-  "age": 25,                          # Required
-  "anonymous": true,                  # Default: true
-  "termsAccepted": true              # Required
-}
-```
-
-#### Login User
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "securePassword123"
-}
-```
-
-#### Get User Profile
-```http
-GET /api/auth/profile
-Authorization: Bearer <jwt-token>
-```
-
-### 💬 Chat Endpoints
-
-#### Send Message
-```http
-POST /api/chat/message
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
-
-{
-  "message": "I'm feeling anxious today",
-  "sessionId": "optional-session-id"
-}
-```
-
-#### Get Chat History
-```http
-GET /api/chat/sessions
-Authorization: Bearer <jwt-token>
-
-# Query parameters:
-# ?limit=20&offset=0&sort=desc
-```
-
-#### Get Session Messages
-```http
-GET /api/chat/sessions/:sessionId/messages
-Authorization: Bearer <jwt-token>
-```
-
-### 📊 Mood Tracking Endpoints
-
-#### Log Mood Entry
-```http
-POST /api/mood/log
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
-
-{
-  "mood": 4,                    # 1-5 scale
-  "energy": 3,                  # 1-5 scale
-  "anxiety": 2,                 # 1-5 scale
-  "note": "Feeling better today",
-  "activities": ["exercise", "meditation"]
-}
-```
-
-#### Get Mood Analytics
-```http
-GET /api/mood/analytics
-Authorization: Bearer <jwt-token>
-
-# Query parameters:
-# ?period=week&start=2025-09-01&end=2025-09-07
-```
-
-### 🚨 Crisis Detection
-
-#### Crisis Assessment
-```http
-POST /api/crisis/assess
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
-
-{
-  "message": "Text to analyze for crisis indicators",
-  "context": "recent conversation context"
-}
-```
-
-### 🎯 Goals & Assessments
-
-#### Create Wellness Goal
-```http
-POST /api/goals
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
-
-{
-  "title": "Daily meditation",
-  "description": "Meditate for 10 minutes daily",
-  "type": "daily",
-  "targetValue": 10,
-  "targetDate": "2025-12-31"
-}
-```
-
----
-
-## 🗄️ Database Schema
-
-### 👤 User Model
-
-```javascript
-{
-  _id: ObjectId,
-  email: String,              // Optional for anonymous users
-  passwordHash: String,       // Hashed with bcrypt
-  isAnonymous: Boolean,       // Default: true
-  profile: {
-    age: Number,              // Required for age-appropriate content
-    gender: String,           // Optional
-    timezone: String,         // Auto-detected
-    preferences: {
-      theme: String,          // 'light' | 'dark' | 'auto'
-      language: String,       // Default: 'en'
-      voiceEnabled: Boolean,
-      notificationsEnabled: Boolean
-    }
-  },
-  privacy: {
-    dataRetention: Number,    // Days to retain data
-    shareAnonymousData: Boolean,
-    consentedToTerms: Boolean,
-    consentDate: Date
-  },
-  safety: {
-    crisisContactEnabled: Boolean,
-    emergencyContacts: [String],
-    hasSafetyPlan: Boolean
-  },
-  createdAt: Date,
-  lastActive: Date,
-  isDeleted: Boolean          // Soft delete for HIPAA compliance
-}
-```
-
-### 💬 Chat Session Model
-
-```javascript
-{
-  _id: ObjectId,
-  userId: ObjectId,           // Reference to User
-  title: String,              // Auto-generated or user-defined
-  status: String,             // 'active' | 'archived' | 'deleted'
-  metadata: {
-    messageCount: Number,
-    avgSentiment: Number,     // -1 to 1 scale
-    crisisLevel: Number,      // 0-4 scale
-    topics: [String],         // AI-extracted topics
-    lastAiModel: String       // 'gemini-pro' | 'gpt-4' etc.
-  },
-  startedAt: Date,
-  lastMessageAt: Date,
-  archivedAt: Date
-}
-```
-
-### 📝 Message Model
-
-```javascript
-{
-  _id: ObjectId,
-  sessionId: ObjectId,        // Reference to ChatSession
-  role: String,               // 'user' | 'assistant' | 'system'
-  content: {
-    text: String,
-    type: String,             // 'text' | 'image' | 'audio'
-    metadata: Object          // Additional data for rich content
-  },
-  analysis: {
-    sentiment: Number,        // -1 to 1 scale
-    crisisScore: Number,      // 0-1 probability
-    topics: [String],
-    intent: String,           // Detected user intent
-    confidence: Number        // AI confidence score
-  },
-  processing: {
-    aiModel: String,
-    processingTime: Number,   // Milliseconds
-    tokenCount: Number
-  },
-  timestamp: Date,
-  isDeleted: Boolean
-}
-```
-
-### 📊 Mood Log Model
-
-```javascript
-{
-  _id: ObjectId,
-  userId: ObjectId,
-  date: Date,                 // Truncated to day for privacy
-  mood: {
-    overall: Number,          // 1-5 scale
-    energy: Number,           // 1-5 scale
-    anxiety: Number,          // 1-5 scale
-    depression: Number,       // 1-5 scale
-    stress: Number,           // 1-5 scale
-    sleep: Number             // 1-5 scale (quality)
-  },
-  activities: [String],       // ['exercise', 'meditation', 'therapy']
-  note: String,               // Optional user note
-  context: {
-    weather: String,          // API integration
-    location: String,         // City/region only
-    timeOfDay: String         // 'morning' | 'afternoon' | 'evening'
-  },
-  createdAt: Date
-}
-```
-
----
-
-## 🧪 Testing
-
-### 🔧 Backend Testing
-
-```bash
-cd backend
-
-# Run all tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run specific test suite
-npm test -- --testPathPattern=auth
-
-# Watch mode for development
-npm run test:watch
-```
-
-### Test Structure
-
-```
-backend/tests/
-├── 🧪 unit/                  # Unit tests
-│   ├── auth.test.js
-│   ├── chat.test.js
-│   └── ai.test.js
-├── 🔗 integration/           # Integration tests
-│   ├── api.test.js
-│   └── database.test.js
-└── 🎭 e2e/                   # End-to-end tests
-    └── chat-flow.test.js
-```
-
-### 🎨 Frontend Testing
-
-```bash
-cd frontend
-
-# Run component tests
-npm test
-
-# Run with coverage
-npm run test:coverage
-
-# Visual regression tests
-npm run test:visual
-```
-
-### 📊 Test Coverage Goals
-
-- **Backend**: > 90% coverage
-- **Frontend**: > 85% coverage
-- **Critical Paths**: 100% coverage (auth, crisis detection, chat)
-
----
-
-## 🚀 Deployment
-
-### 🌐 Production Deployment
-
-#### Backend Deployment (Railway/Heroku)
-
-```bash
-# Using Railway
-railway login
-railway init
-railway add database sqlite
-railway deploy
-
-# Using Heroku
-heroku create mental-wellness-api
-heroku addons:create sqlite3:free
-git push heroku main
-```
-
-#### Frontend Deployment (Vercel/Netlify)
-
-```bash
-# Using Vercel
-vercel login
-vercel init
-vercel deploy --prod
-
-# Using Netlify
-netlify login
-netlify init
-netlify deploy --prod
-```
-
-### 🐳 Docker Deployment
-
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
-
-# Scale services
-docker-compose up -d --scale backend=3
-
-# View logs
-docker-compose logs -f
-```
-
-### ☁️ Cloud Infrastructure
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://backend:5000
-      
-  backend:
-    build: ./backend
-    ports:
-      - "5000:5000"
-    environment:
-      - DATABASE_PATH=/app/data/mental-wellness.db
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    volumes:
-      - sqlite_data:/app/data
-      
-volumes:
-  sqlite_data:
-```
-
----
-
-## 📱 Mobile App
-
-### 📲 Building for Mobile
-
-```bash
-cd frontend
-
-# Build for iOS
-npm run ios
-
-# Build for Android
-npm run android
-
-# Build APK for Android
-eas build --platform android
-
-# Build IPA for iOS
-eas build --platform ios
-```
-
-### 📱 App Store Deployment
-
-```bash
-# Configure EAS
-eas login
-eas init
-
-# Build for production
-eas build --platform all --profile production
-
-# Submit to stores
-eas submit --platform ios
-eas submit --platform android
-```
-
-### 🔧 Mobile-Specific Features
-
-- **Push Notifications** - Crisis alerts and reminders
-- **Offline Mode** - Local storage for critical data
-- **Biometric Auth** - Fingerprint/Face ID login
-- **Voice Recognition** - Native speech-to-text
-- **Background Processing** - Mood tracking reminders
-
----
-
-## 🛡️ Security & Privacy
-
-### 🔐 Security Measures
-
-- **JWT Authentication** - Secure token-based auth
-- **Rate Limiting** - DDoS protection
-- **Input Validation** - SQL injection prevention
-- **HTTPS Enforcement** - Encrypted data transmission
-- **CORS Configuration** - Cross-origin request security
-- **Helmet.js** - Security headers
-- **bcrypt Hashing** - Secure password storage
-
-### 🏥 HIPAA Compliance
-
-- **Data Encryption** - At rest and in transit
-- **Access Logging** - Audit trail for all data access
-- **User Consent** - Explicit consent management
-- **Data Retention** - Automatic data purging
-- **Anonymization** - Remove PII when possible
-- **Secure Backup** - Encrypted backup procedures
-
-### 🔒 Privacy Features
-
-```javascript
-// Example: Data anonymization
-const anonymizeUser = (user) => ({
-  id: hashUserId(user._id),
-  ageRange: getAgeRange(user.age),
-  region: getRegion(user.location),
-  // Remove all PII
-});
-```
-
----
-
-## 🤝 Contributing
-
-### 🌟 How to Contribute
-
-1. **Fork the repository**
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. **Make your changes**
-4. **Add tests for new functionality**
-5. **Run the test suite**
-   ```bash
-   npm test
-   ```
-6. **Commit your changes**
-   ```bash
-   git commit -m "Add amazing feature"
-   ```
-7. **Push to your branch**
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-8. **Open a Pull Request**
-
-### 📋 Development Guidelines
-
-- **Code Style**: Use Prettier and ESLint
-- **Testing**: Write tests for all new features
-- **Documentation**: Update README for API changes
-- **Commits**: Use conventional commit messages
-- **Reviews**: All PRs require review
-
-### 🐛 Bug Reports
-
-Use the GitHub issue template with:
-- **Steps to reproduce**
-- **Expected behavior**
-- **Actual behavior**
-- **Environment details**
-- **Screenshots/logs**
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 📞 Support & Resources
-
-### 🆘 Crisis Resources
-
-- **National Suicide Prevention Lifeline**: 988
-- **Crisis Text Line**: Text HOME to 741741
-- **International Association for Suicide Prevention**: https://www.iasp.info/resources/Crisis_Centres/
-
-### 💬 Community Support
-
-- **GitHub Discussions**: For technical questions
-- **Discord Server**: Real-time community chat
-- **Email Support**: support@mentalwellnessai.com
-
-### 📚 Additional Resources
-
-- **Mental Health First Aid**: https://www.mentalhealthfirstaid.org/
-- **NAMI (National Alliance on Mental Illness)**: https://www.nami.org/
-- **WHO Mental Health**: https://www.who.int/health-topics/mental-health
-
----
-
-<div align="center">
-  <sub>Built with ❤️ by the Mental Wellness AI Team</sub>
-  <br>
-  <sub>Making mental health support accessible to everyone</sub>
-</div>
+`backend/test/safety.test.js` pins what the rebuild guarantees: every message routed
+CRISIS gets the fixed reply; no case either older detector handled is lost; no harmless
+message in either evaluation set is treated as a crisis; helplines match the region; a
+past suicide attempt is never softened to concern by "years ago". CI runs these on every
+pull request, with a dependency and container scan.
+
+## Limitations
+
+- **Recognition is the weak point.** The phrase rules catch the phrasings they were
+  written for: 15% of held-out v1 crisis messages and 9% of v2. The LLM judge raises v2
+  to 74%, which still means about 1 in 4 crisis messages gets an ordinary reply.
+- **The judge is off by default** and needs a Groq key; it adds a network call to every
+  message the rules do not route CRISIS. If it fails or times out, the rules' route stands.
+- **The judge raises false alarms** the rules already make (3/20 harmless messages on v2
+  treated as a crisis), and some of its errors are listed in `docs/SAFETY_EVAL.md`.
+- **All evaluation messages are synthetic**, mostly English with some Hinglish. Nothing here is validated on real users or by clinicians.
+- **Not a therapist and not an emergency service.** In an emergency call your local
+  emergency number.
+
+## Licence
+
+MIT, see [`LICENSE`](LICENSE). The evaluation sets in `backend/ai/safety/` and
+`docs/eval/` are original synthetic messages under the same licence.

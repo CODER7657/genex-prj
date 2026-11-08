@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, Mood, MoodLog } from '../types';
+import { EmergencyResources, Message, Mood, MoodLog } from '../types';
 import { apiService } from '../services/apiService';
 import { saveMoodLogs, loadMoodLogs, saveChatHistory, loadChatHistory, clearChatHistory } from '../services/storageService';
 import { voiceService } from '../services/voiceService';
@@ -55,7 +55,7 @@ const ChatScreen: React.FC = () => {
     const [showVoiceSettings, setShowVoiceSettings] = useState(false);
     const [showGoalsReminders, setShowGoalsReminders] = useState(false);
     const [showCrisisAlert, setShowCrisisAlert] = useState(false);
-    const [crisisLevel, setCrisisLevel] = useState<'low' | 'medium' | 'high'>('low');
+    const [crisisResources, setCrisisResources] = useState<EmergencyResources | null>(null);
     const [moodLogs, setMoodLogs] = useState<MoodLog[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -174,9 +174,7 @@ const ChatScreen: React.FC = () => {
             
             // Handle crisis detection
             if (response.data?.aiResponse?.crisisDetected) {
-                const level = response.data.aiResponse.crisisLevel || 'low';
-                console.log('🚨 Crisis detected:', level);
-                setCrisisLevel(level as 'low' | 'medium' | 'high');
+                setCrisisResources(response.data.aiResponse.emergencyResources ?? null);
                 setShowCrisisAlert(true);
                 
                 // Log crisis event for analytics
@@ -405,26 +403,7 @@ const ChatScreen: React.FC = () => {
             
             {/* Crisis Alert Modal */}
             {showCrisisAlert && (
-                <CrisisAlert 
-                    level={crisisLevel}
-                    onClose={() => setShowCrisisAlert(false)}
-                    onContactCrisisLine={() => {
-                        // Try to open phone dialer first, fallback to tel link
-                        if (navigator.userAgent.includes('Mobile')) {
-                            window.location.href = 'tel:988';
-                        } else {
-                            window.open('tel:988', '_blank');
-                        }
-                    }}
-                    onContactEmergency={() => {
-                        // Emergency contact
-                        if (navigator.userAgent.includes('Mobile')) {
-                            window.location.href = 'tel:911';
-                        } else {
-                            window.open('tel:911', '_blank');
-                        }
-                    }}
-                />
+                <CrisisAlert resources={crisisResources} onClose={() => setShowCrisisAlert(false)} />
             )}
         </div>
     );

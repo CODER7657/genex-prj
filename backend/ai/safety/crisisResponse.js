@@ -11,16 +11,16 @@
 
 const HELPLINES = {
   IN: {
-    primary: { name: 'Tele-MANAS, the national mental health helpline', contact: 'call 14416 or 1-800-891-4416 (free, 24/7)' },
+    primary: { name: 'Tele-MANAS, the national mental health helpline', contact: 'call 14416 or 1-800-891-4416 (free, 24/7)', tel: '14416' },
     emergency: '112',
   },
   US: {
-    primary: { name: 'the 988 Suicide & Crisis Lifeline', contact: 'call or text 988 (free, 24/7)' },
-    extra: { name: 'Crisis Text Line', contact: 'text HOME to 741741' },
+    primary: { name: 'the 988 Suicide & Crisis Lifeline', contact: 'call or text 988 (free, 24/7)', tel: '988' },
+    extra: { name: 'Crisis Text Line', contact: 'text HOME to 741741', sms: '741741' },
     emergency: '911',
   },
   UK: {
-    primary: { name: 'Samaritans', contact: 'call 116 123 (free, 24/7)' },
+    primary: { name: 'Samaritans', contact: 'call 116 123 (free, 24/7)', tel: '116123' },
     emergency: '999',
   },
 };
@@ -103,6 +103,8 @@ function resources(region = regionFrom()) {
     crisis_lines: [
       ...list.flatMap(r => [HELPLINES[r].primary, ...(HELPLINES[r].extra ? [HELPLINES[r].extra] : [])].map(h => ({
         name: h.name, number: h.contact, description: `${r === 'IN' ? 'India' : r}, free and confidential`, region: r,
+        // Dialable digits for tel:/sms: links, so a client never has to parse `number`.
+        ...(h.tel ? { tel: h.tel } : {}), ...(h.sms ? { sms: h.sms } : {}),
       }))),
       ...(region === 'INTL' ? [{ name: DIRECTORY.name, number: DIRECTORY.contact, description: 'Worldwide directory', region: 'INTL' }] : []),
     ],

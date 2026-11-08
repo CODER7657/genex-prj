@@ -1,114 +1,88 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import type { EmergencyResources } from '../types';
+
+/**
+ * The crisis screen. Deliberately plain (roadmap §3: safety over style): white, black
+ * text, one large button to the first helpline, the rest as ordinary links. The numbers
+ * come from the backend, which chooses them by CRISIS_REGION; this file holds only the
+ * fallback for when they did not arrive (the same India + US + directory list the
+ * backend uses when no region is set).
+ */
+export const FALLBACK_RESOURCES: EmergencyResources = {
+    crisis_lines: [
+        { name: 'Tele-MANAS, the national mental health helpline', number: 'call 14416 or 1-800-891-4416 (free, 24/7)', description: 'India, free and confidential', region: 'IN', tel: '14416' },
+        { name: 'the 988 Suicide & Crisis Lifeline', number: 'call or text 988 (free, 24/7)', description: 'US, free and confidential', region: 'US', tel: '988' },
+        { name: 'Find A Helpline', number: 'findahelpline.com lists free services in your country', description: 'Worldwide directory', region: 'INTL' },
+    ],
+    emergency: [{ region: 'IN', number: '112' }, { region: 'US', number: '911' }],
+    immediate_actions: [],
+};
+
+const REGION_NAME: Record<string, string> = { IN: 'India', US: 'US', UK: 'UK' };
 
 interface CrisisAlertProps {
-  level: 'low' | 'medium' | 'high';
-  onClose: () => void;
-  onContactCrisisLine: () => void;
-  onContactEmergency: () => void;
+    resources?: EmergencyResources | null;
+    onClose: () => void;
 }
 
-const CrisisAlert: React.FC<CrisisAlertProps> = ({ level, onClose, onContactCrisisLine, onContactEmergency }) => {
-  const getAlertContent = () => {
-    switch (level) {
-      case 'high':
-        return {
-          title: '🚨 Immediate Support Needed',
-          message: "I'm very concerned about what you've shared. Please know that your life matters and you're not alone.",
-          urgency: 'Please reach out for immediate help:',
-          bgColor: 'bg-red-50 dark:bg-red-900/20',
-          borderColor: 'border-red-200 dark:border-red-800',
-          textColor: 'text-red-800 dark:text-red-200'
-        };
-      case 'medium':
-        return {
-          title: '⚠️ Support Recommended',
-          message: "It sounds like you're going through a really difficult time. Your feelings are valid.",
-          urgency: 'Consider reaching out for support:',
-          bgColor: 'bg-orange-50 dark:bg-orange-900/20',
-          borderColor: 'border-orange-200 dark:border-orange-800',
-          textColor: 'text-orange-800 dark:text-orange-200'
-        };
-      case 'low':
-        return {
-          title: '💙 Support Available',
-          message: "I hear that you're struggling. Remember that support is always available.",
-          urgency: 'Resources that might help:',
-          bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-          borderColor: 'border-blue-200 dark:border-blue-800',
-          textColor: 'text-blue-800 dark:text-blue-200'
-        };
-    }
-  };
+const CrisisAlert: React.FC<CrisisAlertProps> = ({ resources, onClose }) => {
+    const r = resources?.crisis_lines?.length ? resources : FALLBACK_RESOURCES;
+    const [primary, ...others] = r.crisis_lines;
+    const heading = useRef<HTMLHeadingElement>(null);
 
-  const { title, message, urgency, bgColor, borderColor, textColor } = getAlertContent();
+    useEffect(() => {
+        heading.current?.focus();
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onClose]);
 
-  return (
-    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-scale-in`}>
-      <div className={`${bgColor} border-2 ${borderColor} rounded-2xl p-6 max-w-md w-full mx-auto glass-morphism animate-fade-in-up`}>
-        <div className="flex justify-between items-start mb-4">
-          <h3 className={`text-lg font-bold ${textColor}`}>{title}</h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-xl font-semibold transition-colors"
-          >
-            ×
-          </button>
+    return (
+        <div className="crisis-screen" role="dialog" aria-modal="true" aria-labelledby="crisis-title">
+            <div className="crisis-body">
+                <h2 id="crisis-title" ref={heading} tabIndex={-1}>You don't have to go through this alone</h2>
+                <p>Talking to someone now can help. These services are free and confidential.</p>
+
+                {primary?.tel ? (
+                    <a className="crisis-primary" href={`tel:${primary.tel}`}>
+                        Call {primary.tel}
+                        <span>{primary.name}</span>
+                    </a>
+                ) : null}
+
+                <ul className="crisis-list">
+                    {(primary?.tel ? others : r.crisis_lines).map((line) => (
+                        <li key={`${line.region}-${line.name}`}>
+                            {line.tel ? (
+                                <a href={`tel:${line.tel}`}>Call {line.tel}</a>
+                            ) : line.sms ? (
+                                <a href={`sms:${line.sms}`}>Text {line.sms}</a>
+                            ) : line.region === 'INTL' ? (
+                                <a href="https://findahelpline.com" rel="noopener noreferrer" target="_blank">findahelpline.com</a>
+                            ) : null}{' '}
+                            {line.name} ({REGION_NAME[line.region] ?? line.description})
+                        </li>
+                    ))}
+                </ul>
+
+                <p className="crisis-emergency">
+                    In immediate danger, call{' '}
+                    {r.emergency.map((e, i) => (
+                        <React.Fragment key={e.region}>
+                            {i > 0 ? ' or ' : ''}
+                            <a href={`tel:${e.number}`}>{e.number}</a>
+                            {r.emergency.length > 1 ? ` (${REGION_NAME[e.region] ?? e.region})` : ''}
+                        </React.Fragment>
+                    ))}
+                    , or go to the nearest emergency department.
+                </p>
+
+                <button type="button" className="crisis-close" onClick={onClose}>
+                    Back to the chat
+                </button>
+            </div>
         </div>
-        
-        <p className={`${textColor} mb-4 leading-relaxed`}>{message}</p>
-        
-        <div className={`${textColor} mb-4`}>
-          <p className="font-semibold mb-2">{urgency}</p>
-        </div>
-        
-        <div className="space-y-3">
-          <button
-            onClick={onContactCrisisLine}
-            className="gen-z-button w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-semibold hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-          >
-            📞 Call/Text 988 (Crisis Lifeline)
-          </button>
-          
-          <button
-            onClick={() => {
-              window.open('sms:741741', '_blank');
-            }}
-            className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-teal-500 text-white rounded-full font-semibold hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-          >
-            💬 Text HOME to 741741
-          </button>
-          
-          {level === 'high' && (
-            <button
-              onClick={onContactEmergency}
-              className="w-full py-3 px-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full font-semibold hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 animate-pulse"
-            >
-              🚨 Call 911 (Emergency)
-            </button>
-          )}
-        </div>
-        
-        <div className={`mt-4 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 ${textColor}`}>
-          <p className="text-sm font-medium mb-2">Remember:</p>
-          <ul className="text-sm space-y-1">
-            <li>• You matter and your life has value</li>
-            <li>• These feelings are temporary</li>
-            <li>• Professional help is available 24/7</li>
-            <li>• You don't have to go through this alone</li>
-          </ul>
-        </div>
-        
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            I'm Safe For Now
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default CrisisAlert;

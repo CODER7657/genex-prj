@@ -704,3 +704,83 @@
   background: rgba(139, 92, 246, 0.1);
   border: 1px solid rgba(139, 92, 246, 0.2);
 }
+/* The crisis screen (components/CrisisAlert.tsx). Plain on purpose: white, near-black
+   text, one large helpline button, no animation, no theme, no decoration. */
+.crisis-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow-y: auto;
+  background: #ffffff;
+  color: #111111;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.crisis-body {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+.crisis-body h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  font-weight: 700;
+  outline: none;
+}
+.crisis-body a {
+  color: #111111;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.crisis-primary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
+  margin: 1.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #111111;
+  color: #ffffff !important;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none !important;
+}
+.crisis-primary span {
+  font-size: 1rem;
+  font-weight: 400;
+}
+.crisis-primary:focus-visible,
+.crisis-body a:focus-visible,
+.crisis-close:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 3px;
+}
+.crisis-list {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+.crisis-list li {
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #d4d4d4;
+}
+.crisis-emergency {
+  font-weight: 600;
+}
+.crisis-close {
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #111111;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  cursor: pointer;
+}

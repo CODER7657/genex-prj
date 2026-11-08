@@ -12,7 +12,7 @@ on:
     types: [ published ]
 
 env:
-  NODE_VERSION: '18.x'
+  NODE_VERSION: '22.x'
   PYTHON_VERSION: '3.11'
   DOCKER_REGISTRY: ghcr.io
   IMAGE_NAME: mental-wellness-ai
@@ -174,6 +174,14 @@ jobs:
         working-directory: ./frontend
         continue-on-error: true
         run: npm run lint --if-present
+
+      - name: Typecheck
+        working-directory: ./frontend
+        run: npm run typecheck
+
+      - name: Unit Tests (crisis screen)
+        working-directory: ./frontend
+        run: npm test
 
       - name: Build Frontend
         working-directory: ./frontend

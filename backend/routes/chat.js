@@ -10,6 +10,7 @@ const winston = require('winston');
 
 const chatService = require('../ai/chatService');
 const { authMiddleware } = require('../middlewares/auth');
+const { toClientAiResponse } = require('../ai/clientResponse');
 
 const router = express.Router();
 
@@ -223,15 +224,7 @@ router.post('/message',
             sender: 'user',
             timestamp: new Date().toISOString()
           },
-          aiResponse: {
-            content: aiResponse.content,
-            sender: 'ai',
-            timestamp: new Date().toISOString(),
-            sentiment: aiResponse.sentiment,
-            crisisDetected: aiResponse.crisisDetected,
-            crisisLevel: aiResponse.crisisLevel,
-            recommendations: aiResponse.recommendations
-          }
+          aiResponse: toClientAiResponse(aiResponse)
         }
       });
 

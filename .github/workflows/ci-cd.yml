@@ -189,6 +189,14 @@ jobs:
         continue-on-error: true
         run: npm run lint --if-present
 
+      - name: Typecheck
+        working-directory: ./frontend
+        run: npm run typecheck
+
+      - name: Unit Tests (crisis screen)
+        working-directory: ./frontend
+        run: npm test
+
       - name: Build Frontend
         working-directory: ./frontend
         run: npm run build

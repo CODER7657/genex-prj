@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Clock, Flower2, LifeBuoy, Lightbulb, Sparkles, Wind } from 'lucide-react';
 import { ClayDialog } from './clay';
+import { FALLBACK_RESOURCES } from './CrisisAlert';
 
 interface WellnessResourcesProps {
     onClose: () => void;
@@ -125,23 +126,10 @@ const wellnessResources: Resource[] = [
     }
 ];
 
-const crisisResources = [
-    {
-        title: 'National Suicide Prevention Lifeline',
-        phone: '988',
-        description: '24/7 free and confidential support'
-    },
-    {
-        title: 'Crisis Text Line',
-        phone: 'Text HOME to 741741',
-        description: 'Free, 24/7 crisis support via text'
-    },
-    {
-        title: 'SAMHSA National Helpline',
-        phone: '1-800-662-4357',
-        description: 'Treatment referral and information service'
-    }
-];
+// The same list the crisis screen falls back to (India first, then the US and a
+// worldwide directory), so the app never shows US-only numbers to everyone.
+const crisisResources = FALLBACK_RESOURCES;
+const REGION_NAME: Record<string, string> = { IN: 'India', US: 'US', UK: 'UK', INTL: 'Worldwide' };
 
 const WellnessResources: React.FC<WellnessResourcesProps> = ({ onClose }) => {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -224,13 +212,31 @@ const WellnessResources: React.FC<WellnessResourcesProps> = ({ onClose }) => {
                                 If you're having thoughts of self-harm or suicide, please reach out for help immediately:
                             </p>
                             <div className="space-y-3">
-                                {crisisResources.map((resource, index) => (
-                                    <div key={index} className="rounded-clay border border-ink-soft bg-white p-4">
-                                        <h4 className="font-extrabold text-ink">{resource.title}</h4>
-                                        <p className="text-lg font-extrabold text-ink">{resource.phone}</p>
-                                        <p className="text-sm text-ink-soft">{resource.description}</p>
+                                {crisisResources.crisis_lines.map((line) => (
+                                    <div key={`${line.region}-${line.name}`} className="rounded-clay border border-ink-soft bg-white p-4">
+                                        <h4 className="font-extrabold text-ink">{line.name}</h4>
+                                        <p className="text-lg font-extrabold text-ink">
+                                            {line.tel ? (
+                                                <a className="underline" href={`tel:${line.tel}`}>Call {line.tel}</a>
+                                            ) : line.sms ? (
+                                                <a className="underline" href={`sms:${line.sms}`}>Text {line.sms}</a>
+                                            ) : (
+                                                <a className="underline" href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>
+                                            )}
+                                        </p>
+                                        <p className="text-sm text-ink-soft">{REGION_NAME[line.region] ?? line.description}, free and confidential</p>
                                     </div>
                                 ))}
+                                <p className="text-base font-extrabold text-ink">
+                                    In immediate danger, call{' '}
+                                    {crisisResources.emergency.map((e, i) => (
+                                        <React.Fragment key={e.region}>
+                                            {i > 0 ? ' or ' : ''}
+                                            <a className="underline" href={`tel:${e.number}`}>{e.number}</a> ({REGION_NAME[e.region] ?? e.region})
+                                        </React.Fragment>
+                                    ))}
+                                    .
+                                </p>
                             </div>
                         </div>
                     </div>

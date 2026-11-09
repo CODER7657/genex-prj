@@ -146,7 +146,7 @@ const initUserModel = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        is: /^\+?[\d\s\-\(\)]{10,15}$/
+        is: /^\+?[\d\s\-()]{10,15}$/
       }
     },
     dateOfBirth: {

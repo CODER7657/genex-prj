@@ -4,12 +4,6 @@
  */
 
 const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
-const cors = require('cors');
-const hpp = require('hpp');
-const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
-const compression = require('compression');
 const winston = require('winston');
 
 // Logger setup
@@ -83,7 +77,7 @@ const rateLimiters = {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => process.env.NODE_ENV === 'development'
+    skip: () => process.env.NODE_ENV === 'development'
   }),
   
   // Strict rate limiting for authentication endpoints
@@ -244,7 +238,8 @@ const hipaaCompliance = (req, res, next) => {
 /**
  * Error handling middleware
  */
-const errorHandler = (err, req, res, next) => {
+// Express recognises an error handler by its four parameters, so `_next` stays.
+const errorHandler = (err, req, res, _next) => {
   logger.error('❌ Server error:', {
     error: err.message,
     stack: err.stack,

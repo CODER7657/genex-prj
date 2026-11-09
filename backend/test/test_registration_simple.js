@@ -46,7 +46,7 @@ async function testBasicEndpoints() {
     console.log('✅ Server is healthy:', healthResponse.data);
     
     // Test registration
-    const user = await testRegistration();
+    await testRegistration();
     
     console.log('\n🎉 All tests passed!');
     

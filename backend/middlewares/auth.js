@@ -6,7 +6,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
-const { promisify } = require('util');
 const winston = require('winston');
 
 // Logger setup
@@ -42,7 +41,7 @@ const authRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: () => {
     // Skip rate limiting in development
     return process.env.NODE_ENV === 'development';
   }

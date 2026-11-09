@@ -497,6 +497,7 @@ router.delete('/sessions/:sessionId',
  */
 router.post('/crisis-check', 
   authMiddleware,
+  crisisLimiter,
   [
     body('message')
       .isString()

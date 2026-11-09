@@ -9,7 +9,7 @@ const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const { db } = require('../models');
 
-const { authMiddleware, passwordUtils, tokenUtils } = require('../middlewares/auth');
+const { authMiddleware } = require('../middlewares/auth');
 
 const router = express.Router();
 

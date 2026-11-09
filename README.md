@@ -7,8 +7,8 @@ an LLM-generated one.
 [![CI](https://github.com/CODER7657/genex-prj/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/CODER7657/genex-prj/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Live:** not deployed yet. A hosted web build is planned; until then, run it locally
-(below). This is safety-evaluation work on synthetic messages, **not a clinical tool**.
+**Live:** not hosted; it runs locally in two commands (below). The backend needs a
+database and model key, so there is no public instance. This is safety-evaluation work on synthetic messages, **not a clinical tool**.
 
 ## Measured results
 
@@ -97,8 +97,12 @@ the LLM risk judge. Keys live only in the git-ignored `.env`.
 
 ```bash
 cd backend
-npx jest           # 259 tests, no network: routing guarantees, helplines, output checker
+npx jest           # 271 tests, no network: routing guarantees, crisis gate, helplines
 npm run lint
+
+cd ../frontend
+npm test           # crisis screen and helpline lists
+npm run test:e2e   # Playwright + axe at 375, 768 and 1280 px
 ```
 
 `backend/test/safety.test.js` pins what the rebuild guarantees: every message routed

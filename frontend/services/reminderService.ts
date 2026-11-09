@@ -89,7 +89,7 @@ class ReminderService {
     const notification: ReminderNotification = {
       id: `reminder-${Date.now()}`,
       type: 'mood-checkin',
-      title: '🌟 Time for your wellness check-in!',
+      title: 'Time for your wellness check-in!',
       message: 'How are you feeling right now? Take a moment to reflect on your mood.',
       scheduledTime: new Date(),
       isShown: false
@@ -195,7 +195,7 @@ class ReminderService {
     const notification: ReminderNotification = {
       id: `goal-complete-${Date.now()}`,
       type: 'goal-reminder',
-      title: '🎉 Goal Completed!',
+      title: 'Goal Completed!',
       message: `Congratulations! You've completed your goal: ${goal.title}`,
       scheduledTime: new Date(),
       isShown: false,

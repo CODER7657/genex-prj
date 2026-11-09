@@ -1,0 +1,54 @@
+/* Clay Style design tokens. The one place colours, type sizes, radii and shadows are
+   defined; tailwind.config.js maps them into the theme. Light only (Clay forbids dark
+   backgrounds). Contrast, measured with the WCAG formula:
+     ink      #2E2A24 on mint 10.7, sand 8.6, white 14.3, coral 5.9, leaf 5.5
+     ink-soft #554B40 on mint 6.4,  sand 5.2, white 8.5   (never on coral or leaf) */
+:root {
+  /* Palette (roadmap §3, exact) */
+  --mint: #BFE8DA;
+  --coral: #F28B6E;
+  --leaf: #6FAF6B;
+  --sand: #E8C39E;
+  --clay: #D94B3D;
+  --white: #FFFFFF;
+
+  /* Text */
+  --ink: #2E2A24;
+  --ink-soft: #554B40;
+
+  /* Type: Nunito, 600+ only. Fluid sizes from 375 px to 1280 px. */
+  --font-sans: 'Nunito', ui-rounded, system-ui, sans-serif;
+  --fs-sm: clamp(0.875rem, 0.84rem + 0.15vw, 0.9375rem);
+  --fs-base: clamp(1rem, 0.96rem + 0.18vw, 1.0625rem);
+  --fs-lg: clamp(1.125rem, 1.06rem + 0.3vw, 1.25rem);
+  --fs-xl: clamp(1.25rem, 1.15rem + 0.45vw, 1.5rem);
+  --fs-2xl: clamp(1.5rem, 1.33rem + 0.75vw, 1.875rem);
+  --fs-3xl: clamp(1.875rem, 1.6rem + 1.2vw, 2.5rem);
+  --fs-hero: clamp(2rem, 1.45rem + 2.4vw, 3.5rem);
+
+  /* Shape */
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 36px;
+
+  /* Clay shadows: soft outer drop + light top-left inset + darker bottom-right inset */
+  --shadow-clay:
+    0 14px 28px rgba(46, 42, 36, 0.12),
+    0 3px 6px rgba(46, 42, 36, 0.06),
+    inset 6px 8px 14px rgba(255, 255, 255, 0.65),
+    inset -6px -8px 14px rgba(46, 42, 36, 0.1);
+  --shadow-clay-sm:
+    0 8px 16px rgba(46, 42, 36, 0.12),
+    inset 4px 5px 8px rgba(255, 255, 255, 0.6),
+    inset -4px -5px 8px rgba(46, 42, 36, 0.12);
+  --shadow-clay-pressed:
+    0 2px 4px rgba(46, 42, 36, 0.08),
+    inset 5px 6px 10px rgba(46, 42, 36, 0.14),
+    inset -4px -5px 8px rgba(255, 255, 255, 0.55);
+  --shadow-well:
+    inset 4px 5px 10px rgba(46, 42, 36, 0.1),
+    inset -4px -5px 10px rgba(255, 255, 255, 0.9);
+
+  /* Modal scrim: a veil of mint, never a dark backdrop */
+  --scrim: rgba(191, 232, 218, 0.82);
+}

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { AlarmClock, Bell, Lightbulb, PartyPopper, Plus, Target, X } from 'lucide-react';
+import { ClayDialog, ClaySwitch } from './clay';
 import { reminderService, WellnessGoal, ReminderSettings } from '../services/reminderService';
 
 interface GoalsAndRemindersProps {
@@ -95,100 +97,87 @@ const GoalsAndReminders: React.FC<GoalsAndRemindersProps> = ({ onClose }) => {
     return Math.min((goal.currentValue / goal.targetValue) * 100, 100);
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Goals & Reminders</h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
-          >
-            ×
-          </button>
-        </div>
+  const tabClass = (active: boolean) =>
+    `clay-btn flex-1 ${active ? 'clay-coral' : 'bg-transparent shadow-none'}`;
 
+  return (
+    <ClayDialog title="Goals & Reminders" onClose={onClose} width="max-w-4xl">
         {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-8 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+        <div className="clay-well mb-8 flex gap-2 rounded-full p-1.5">
           <button
+            type="button"
             onClick={() => setActiveTab('reminders')}
-            className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-              activeTab === 'reminders'
-                ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-400 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
+            aria-pressed={activeTab === 'reminders'}
+            className={tabClass(activeTab === 'reminders')}
           >
-            ⏰ Reminders
+            <AlarmClock className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+            Reminders
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('goals')}
-            className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-              activeTab === 'goals'
-                ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-400 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
+            aria-pressed={activeTab === 'goals'}
+            className={tabClass(activeTab === 'goals')}
           >
-            🎯 Goals
+            <Target className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+            Goals
           </button>
         </div>
 
         {/* Reminders Tab */}
         {activeTab === 'reminders' && (
           <div className="space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Daily Check-in Reminders</h3>
-              
+            <div className="clay-card bg-mint p-5 sm:p-6">
+              <h3 className="mb-4 text-lg font-extrabold text-ink">Daily Check-in Reminders</h3>
+
               {/* Notification Permission */}
               {!hasNotificationPermission && (
-                <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-2">
+                <div className="mb-4 flex flex-col items-start gap-3 rounded-clay bg-white p-4 shadow-well">
+                  <p className="text-sm text-ink">
                     Enable notifications to receive wellness reminders
                   </p>
                   <button
+                    type="button"
                     onClick={requestNotificationPermission}
-                    className="text-sm bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700"
+                    className="clay-btn clay-sand text-sm"
                   >
+                    <Bell className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                     Enable Notifications
                   </button>
                 </div>
               )}
 
               {/* Reminder Toggle */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <span className="text-base font-bold text-ink">
                   Daily mood check-in reminders
                 </span>
-                <button
-                  onClick={() => handleReminderToggle(!reminderSettings.enabled)}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 ${
-                    reminderSettings.enabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform duration-200 ${
-                      reminderSettings.enabled ? 'transform translate-x-6' : ''
-                    }`}
-                  />
-                </button>
+                <ClaySwitch
+                  checked={reminderSettings.enabled}
+                  onChange={() => handleReminderToggle(!reminderSettings.enabled)}
+                  label="Daily mood check-in reminders"
+                />
               </div>
 
               {/* Time Picker */}
               {reminderSettings.enabled && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label htmlFor="reminder-time" className="mb-2 block text-sm font-bold text-ink">
                       Reminder Time
                     </label>
                     <input
+                      id="reminder-time"
                       type="time"
                       value={reminderSettings.time}
                       onChange={(e) => handleTimeChange(e.target.value)}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      className="clay-input"
                     />
                   </div>
-                  
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    💡 You'll receive a daily reminder at {reminderSettings.time} to check in with your mood and feelings.
+
+                  <div className="flex items-start gap-2 text-sm text-ink">
+                    <Lightbulb className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2.5} aria-hidden="true" />
+                    <span>You'll receive a daily reminder at {reminderSettings.time} to check in with your mood and feelings.</span>
                   </div>
                 </div>
               )}
@@ -200,57 +189,64 @@ const GoalsAndReminders: React.FC<GoalsAndRemindersProps> = ({ onClose }) => {
         {activeTab === 'goals' && (
           <div className="space-y-6">
             {/* Create Goal Button */}
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Your Wellness Goals</h3>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-lg font-extrabold text-ink">Your Wellness Goals</h3>
               <button
+                type="button"
                 onClick={() => setShowCreateGoal(true)}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                className="clay-btn clay-coral"
               >
-                + Create Goal
+                <Plus className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+                Create Goal
               </button>
             </div>
 
             {/* Active Goals */}
             {activeGoals.length > 0 && (
               <div>
-                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Active Goals</h4>
-                <div className="space-y-3">
+                <h4 className="mb-3 font-bold text-ink-soft">Active Goals</h4>
+                <div className="space-y-4">
                   {activeGoals.map(goal => (
-                    <div key={goal.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
+                    <div key={goal.id} className="clay-card p-5">
+                      <div className="mb-3 flex items-start justify-between gap-3">
                         <div>
-                          <h5 className="font-semibold text-gray-800 dark:text-gray-200">{goal.title}</h5>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{goal.description}</p>
+                          <h5 className="font-extrabold text-ink">{goal.title}</h5>
+                          <p className="text-sm text-ink-soft">{goal.description}</p>
                         </div>
                         <button
+                          type="button"
                           onClick={() => handleDeactivateGoal(goal.id)}
-                          className="text-gray-400 hover:text-red-500 text-sm"
+                          className="clay-btn clay-btn-icon flex-shrink-0"
+                          aria-label={`Remove goal: ${goal.title}`}
+                          title="Remove goal"
                         >
-                          ✕
+                          <X className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                         </button>
                       </div>
-                      
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm text-ink-soft">
                           {goal.currentValue} / {goal.targetValue} {goal.unit}
                         </span>
-                        <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                        <span className="text-sm font-extrabold text-ink">
                           {Math.round(getProgressPercentage(goal))}%
                         </span>
                       </div>
-                      
-                      <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-3">
+
+                      <div className="clay-well mb-4 h-4 w-full overflow-hidden rounded-full">
                         <div
-                          className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                          className="h-full rounded-full bg-leaf shadow-clay-sm"
                           style={{ width: `${getProgressPercentage(goal)}%` }}
                         />
                       </div>
-                      
+
                       <button
+                        type="button"
                         onClick={() => handleGoalProgress(goal.id)}
-                        className="w-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
+                        className="clay-btn clay-mint w-full"
                       >
-                        + Mark Progress
+                        <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                        Mark Progress
                       </button>
                     </div>
                   ))}
@@ -261,17 +257,19 @@ const GoalsAndReminders: React.FC<GoalsAndRemindersProps> = ({ onClose }) => {
             {/* Default Goals Suggestions */}
             {activeGoals.length === 0 && (
               <div>
-                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Suggested Goals</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <h4 className="mb-3 font-bold text-ink-soft">Suggested Goals</h4>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {reminderService.getDefaultGoals().map((defaultGoal, index) => (
-                    <div key={index} className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-                      <h5 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">{defaultGoal.title}</h5>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{defaultGoal.description}</p>
+                    <div key={index} className="clay-card flex flex-col items-start bg-mint p-5">
+                      <h5 className="mb-1 font-extrabold text-ink">{defaultGoal.title}</h5>
+                      <p className="mb-4 flex-1 text-sm text-ink-soft">{defaultGoal.description}</p>
                       <button
+                        type="button"
                         onClick={() => createDefaultGoal(defaultGoal)}
-                        className="text-purple-600 dark:text-purple-400 text-sm hover:text-purple-700 dark:hover:text-purple-300"
+                        className="clay-btn text-sm"
                       >
-                        + Add this goal
+                        <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                        Add this goal
                       </button>
                     </div>
                   ))}
@@ -282,13 +280,16 @@ const GoalsAndReminders: React.FC<GoalsAndRemindersProps> = ({ onClose }) => {
             {/* Completed Goals */}
             {completedGoals.length > 0 && (
               <div>
-                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Completed Goals 🎉</h4>
-                <div className="space-y-2">
+                <h4 className="mb-3 flex items-center gap-2 font-bold text-ink-soft">
+                  Completed Goals
+                  <PartyPopper className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                </h4>
+                <div className="space-y-3">
                   {completedGoals.map(goal => (
-                    <div key={goal.id} className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-green-800 dark:text-green-300">{goal.title}</span>
-                        <span className="text-sm text-green-600 dark:text-green-400">
+                    <div key={goal.id} className="clay-card bg-mint p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-extrabold text-ink">{goal.title}</span>
+                        <span className="text-sm text-ink-soft">
                           Completed {goal.completedAt?.toLocaleDateString()}
                         </span>
                       </div>
@@ -302,73 +303,75 @@ const GoalsAndReminders: React.FC<GoalsAndRemindersProps> = ({ onClose }) => {
 
         {/* Create Goal Modal */}
         {showCreateGoal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Create New Goal</h3>
-              
+          <ClayDialog title="Create New Goal" onClose={() => setShowCreateGoal(false)} closeLabel="Cancel" width="max-w-md" zClass="z-[60]">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label htmlFor="goal-title" className="mb-1 block text-sm font-bold text-ink">
                     Goal Title
                   </label>
                   <input
+                    id="goal-title"
                     type="text"
                     value={newGoal.title}
                     onChange={(e) => setNewGoal({...newGoal, title: e.target.value})}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="clay-input"
                     placeholder="e.g., Daily Meditation"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label htmlFor="goal-description" className="mb-1 block text-sm font-bold text-ink">
                     Description
                   </label>
                   <textarea
+                    id="goal-description"
                     value={newGoal.description}
                     onChange={(e) => setNewGoal({...newGoal, description: e.target.value})}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="clay-input"
                     placeholder="Describe your goal..."
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label htmlFor="goal-target" className="mb-1 block text-sm font-bold text-ink">
                       Target
                     </label>
                     <input
+                      id="goal-target"
                       type="number"
                       min="1"
                       value={newGoal.targetValue}
                       onChange={(e) => setNewGoal({...newGoal, targetValue: parseInt(e.target.value) || 1})}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      className="clay-input"
                     />
                   </div>
-                  
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label htmlFor="goal-unit" className="mb-1 block text-sm font-bold text-ink">
                       Unit
                     </label>
                     <input
+                      id="goal-unit"
                       type="text"
                       value={newGoal.unit}
                       onChange={(e) => setNewGoal({...newGoal, unit: e.target.value})}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      className="clay-input"
                       placeholder="e.g., times, minutes"
                     />
                   </div>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label htmlFor="goal-frequency" className="mb-1 block text-sm font-bold text-ink">
                     Frequency
                   </label>
                   <select
+                    id="goal-frequency"
                     value={newGoal.frequency}
                     onChange={(e) => setNewGoal({...newGoal, frequency: e.target.value as any})}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="clay-input"
                   >
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -376,27 +379,27 @@ const GoalsAndReminders: React.FC<GoalsAndRemindersProps> = ({ onClose }) => {
                   </select>
                 </div>
               </div>
-              
-              <div className="flex justify-end gap-3 mt-6">
+
+              <div className="mt-6 flex justify-end gap-3">
                 <button
+                  type="button"
                   onClick={() => setShowCreateGoal(false)}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="clay-btn px-6"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleCreateGoal}
                   disabled={!newGoal.title.trim()}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="clay-btn clay-coral px-6"
                 >
                   Create Goal
                 </button>
               </div>
-            </div>
-          </div>
+          </ClayDialog>
         )}
-      </div>
-    </div>
+    </ClayDialog>
   );
 };
 

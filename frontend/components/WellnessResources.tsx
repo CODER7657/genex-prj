@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { ArrowLeft, ArrowRight, Clock, Flower2, LifeBuoy, Lightbulb, Sparkles, Wind } from 'lucide-react';
+import { ClayDialog } from './clay';
 
 interface WellnessResourcesProps {
     onClose: () => void;
@@ -109,16 +111,16 @@ const wellnessResources: Resource[] = [
         duration: 'Ongoing',
         category: 'tips',
         content: [
-            '🌅 Start your day with 3 deep breaths',
-            '💧 Drink water regularly throughout the day',
-            '🚶 Take short walks, even just 5 minutes',
-            '📱 Take breaks from screens every hour',
-            '🍎 Eat nourishing foods when possible',
-            '😴 Maintain a consistent sleep schedule',
-            '📝 Write down 3 things you\'re grateful for',
-            '🤝 Connect with someone you care about',
-            '🎵 Listen to music that makes you feel good',
-            '🧘 Practice one mindfulness moment daily'
+            'Start your day with 3 deep breaths',
+            'Drink water regularly throughout the day',
+            'Take short walks, even just 5 minutes',
+            'Take breaks from screens every hour',
+            'Eat nourishing foods when possible',
+            'Maintain a consistent sleep schedule',
+            'Write down 3 things you\'re grateful for',
+            'Connect with someone you care about',
+            'Listen to music that makes you feel good',
+            'Practice one mindfulness moment daily'
         ]
     }
 ];
@@ -146,11 +148,11 @@ const WellnessResources: React.FC<WellnessResourcesProps> = ({ onClose }) => {
     const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
     const categories = [
-        { id: 'all', label: 'All Resources', emoji: '🌟' },
-        { id: 'breathing', label: 'Breathing', emoji: '🫁' },
-        { id: 'meditation', label: 'Meditation', emoji: '🧘' },
-        { id: 'tips', label: 'Wellness Tips', emoji: '💡' },
-        { id: 'crisis', label: 'Crisis Support', emoji: '🆘' }
+        { id: 'all', label: 'All Resources', Icon: Sparkles },
+        { id: 'breathing', label: 'Breathing', Icon: Wind },
+        { id: 'meditation', label: 'Meditation', Icon: Flower2 },
+        { id: 'tips', label: 'Wellness Tips', Icon: Lightbulb },
+        { id: 'crisis', label: 'Crisis Support', Icon: LifeBuoy }
     ];
 
     const filteredResources = selectedCategory === 'all' 
@@ -159,71 +161,56 @@ const WellnessResources: React.FC<WellnessResourcesProps> = ({ onClose }) => {
 
     if (selectedResource) {
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">{selectedResource.title}</h2>
-                        <button 
-                            onClick={() => setSelectedResource(null)}
-                            className="text-gray-500 hover:text-gray-700 text-2xl"
-                        >
-                            ←
-                        </button>
-                    </div>
-                    
+            <ClayDialog
+                title={selectedResource.title}
+                onClose={() => setSelectedResource(null)}
+                closeKind="back"
+                closeLabel="Back to Resources"
+            >
                     <div className="mb-6">
-                        <p className="text-gray-600 mb-2">{selectedResource.description}</p>
-                        <p className="text-sm text-purple-600 font-medium">Duration: {selectedResource.duration}</p>
+                        <p className="mb-3 text-base text-ink-soft">{selectedResource.description}</p>
+                        <span className="inline-flex items-center gap-2 rounded-full bg-sand px-3 py-1 text-sm font-bold text-ink">
+                            <Clock className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                            Duration: {selectedResource.duration}
+                        </span>
                     </div>
 
-                    <div className="space-y-3">
-                        {selectedResource.content.map((step, index) => (
-                            <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                                <p className="text-gray-700">{step}</p>
-                            </div>
+                    <ol className="space-y-3">
+                        {selectedResource.content.filter(step => step !== '').map((step, index) => (
+                            <li key={index} className="clay-well p-4">
+                                <p className="text-base text-ink">{step}</p>
+                            </li>
                         ))}
-                    </div>
+                    </ol>
 
                     <div className="mt-8 flex justify-center">
                         <button
+                            type="button"
                             onClick={() => setSelectedResource(null)}
-                            className="bg-purple-600 text-white font-semibold py-3 px-6 rounded-full hover:bg-purple-700 transition-colors"
+                            className="clay-btn clay-coral px-6"
                         >
+                            <ArrowLeft className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
                             Back to Resources
                         </button>
                     </div>
-                </div>
-            </div>
+            </ClayDialog>
         );
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Wellness Resources</h2>
-                    <button 
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 text-2xl"
-                    >
-                        ×
-                    </button>
-                </div>
-
+        <ClayDialog title="Wellness Resources" onClose={onClose} width="max-w-4xl">
                 {/* Category Filter */}
-                <div className="flex flex-wrap gap-3 mb-8">
-                    {categories.map(category => (
+                <div className="mb-8 flex flex-wrap gap-3" role="group" aria-label="Categories">
+                    {categories.map(({ id, label, Icon }) => (
                         <button
-                            key={category.id}
-                            onClick={() => setSelectedCategory(category.id)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors ${
-                                selectedCategory === category.id
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-purple-100'
-                            }`}
+                            key={id}
+                            type="button"
+                            onClick={() => setSelectedCategory(id)}
+                            aria-pressed={selectedCategory === id}
+                            className={`clay-btn text-sm ${selectedCategory === id ? 'clay-coral' : ''}`}
                         >
-                            <span>{category.emoji}</span>
-                            {category.label}
+                            <Icon className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                            {label}
                         </button>
                     ))}
                 </div>
@@ -231,17 +218,17 @@ const WellnessResources: React.FC<WellnessResourcesProps> = ({ onClose }) => {
                 {/* Crisis Resources */}
                 {selectedCategory === 'crisis' && (
                     <div className="mb-8">
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-                            <h3 className="text-lg font-semibold text-red-800 mb-4">🚨 Crisis Support</h3>
-                            <p className="text-red-700 mb-4">
+                        <div className="rounded-clay-lg border-2 border-ink bg-white p-5 sm:p-6">
+                            <h3 className="mb-3 text-lg font-extrabold text-ink">Crisis Support</h3>
+                            <p className="mb-4 text-base text-ink">
                                 If you're having thoughts of self-harm or suicide, please reach out for help immediately:
                             </p>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 {crisisResources.map((resource, index) => (
-                                    <div key={index} className="bg-white p-4 rounded-lg border">
-                                        <h4 className="font-semibold text-gray-800">{resource.title}</h4>
-                                        <p className="text-lg font-bold text-red-600">{resource.phone}</p>
-                                        <p className="text-sm text-gray-600">{resource.description}</p>
+                                    <div key={index} className="rounded-clay border border-ink-soft bg-white p-4">
+                                        <h4 className="font-extrabold text-ink">{resource.title}</h4>
+                                        <p className="text-lg font-extrabold text-ink">{resource.phone}</p>
+                                        <p className="text-sm text-ink-soft">{resource.description}</p>
                                     </div>
                                 ))}
                             </div>
@@ -251,34 +238,35 @@ const WellnessResources: React.FC<WellnessResourcesProps> = ({ onClose }) => {
 
                 {/* Resource Grid */}
                 {selectedCategory !== 'crisis' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                         {filteredResources.map(resource => (
-                            <div 
+                            <button
                                 key={resource.id}
-                                className="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                                type="button"
+                                className="clay-card clay-card-hover flex flex-col p-5 text-left sm:p-6"
                                 onClick={() => setSelectedResource(resource)}
                             >
-                                <div className="flex items-start justify-between mb-3">
-                                    <h3 className="text-lg font-semibold text-gray-800">{resource.title}</h3>
-                                    <span className="text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                                <span className="mb-3 flex w-full items-start justify-between gap-3">
+                                    <span className="text-lg font-extrabold text-ink">{resource.title}</span>
+                                    <span className="flex-shrink-0 rounded-full bg-sand px-3 py-1 text-sm font-bold text-ink">
                                         {resource.duration}
                                     </span>
-                                </div>
-                                <p className="text-gray-600 mb-4">{resource.description}</p>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-purple-600 font-medium capitalize">
+                                </span>
+                                <span className="mb-4 flex-1 text-base text-ink-soft">{resource.description}</span>
+                                <span className="flex w-full items-center justify-between">
+                                    <span className="rounded-full bg-mint px-3 py-1 text-sm font-bold capitalize text-ink">
                                         {resource.category}
                                     </span>
-                                    <span className="text-purple-600 hover:text-purple-700">
-                                        Start →
+                                    <span className="inline-flex items-center gap-1 font-extrabold text-ink">
+                                        Start
+                                        <ArrowRight className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                                     </span>
-                                </div>
-                            </div>
+                                </span>
+                            </button>
                         ))}
                     </div>
                 )}
-            </div>
-        </div>
+        </ClayDialog>
     );
 };
 

@@ -69,7 +69,7 @@ Helplines follow `CRISIS_REGION` (India: Tele-MANAS 14416 and 112; US: 988 and 9
 with no region set the reply lists India, the US and findahelpline.com.
 
 Around the chat: mood check-ins and trends, goals and reminders, wellness resources,
-voice input and read-aloud (the browser's Web Speech API), light and dark themes. The API
+voice input and read-aloud (the browser's Web Speech API), in a soft Clay-style light design. The API
 is Express on Node, with SQLite in development and Postgres via `DATABASE_URL` in
 production.
 

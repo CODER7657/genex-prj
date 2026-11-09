@@ -4,46 +4,48 @@ import { EmergencyResources, Message, Mood, MoodLog } from '../types';
 import { apiService } from '../services/apiService';
 import { saveMoodLogs, loadMoodLogs, saveChatHistory, loadChatHistory, clearChatHistory } from '../services/storageService';
 import { voiceService } from '../services/voiceService';
-import { useTheme } from '../contexts/ThemeContext';
+import { usePreferences } from '../contexts/PreferencesContext';
 import MoodCheckIn from './MoodCheckIn';
 import MoodAnalytics from './MoodAnalytics';
 import WellnessResources from './WellnessResources';
 import VoiceControls from './VoiceControls';
 import GoalsAndReminders from './GoalsAndReminders';
 import CrisisAlert from './CrisisAlert';
-import { FaceSmileIcon, SendIcon } from './icons';
+import { BarChart3, HeartPulse, Mic, RotateCcw, SendHorizontal, Smile, Sprout, Target } from 'lucide-react';
+import { ClaySwitch } from './clay';
 
 // Define components outside to prevent re-creation on re-renders
 const AIMessageBubble: React.FC<{ text: string }> = ({ text }) => (
-    <div className="flex justify-start animate-slide-in-right">
-        <div className="glass-message-ai text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-none p-3 max-w-lg message-bubble hover-lift">
-            <p className="text-sm">{text}</p>
+    <div className="flex justify-start">
+        <div className="clay-card max-w-[85%] rounded-bl-md px-5 py-3.5 sm:max-w-lg">
+            <p className="text-base text-ink">{text}</p>
         </div>
     </div>
 );
 
 const UserMessageBubble: React.FC<{ text: string }> = ({ text }) => (
-    <div className="flex justify-end animate-slide-in-right">
-        <div className="glass-message-user text-white rounded-2xl rounded-br-none p-3 max-w-lg message-bubble hover-lift">
-            <p className="text-sm">{text}</p>
+    <div className="flex justify-end">
+        <div className="clay-card max-w-[85%] rounded-br-md bg-sand px-5 py-3.5 sm:max-w-lg">
+            <p className="text-base text-ink">{text}</p>
         </div>
     </div>
 );
 
 const LoadingBubble: React.FC = () => (
-    <div className="flex justify-start animate-scale-in">
-        <div className="glass-message-ai rounded-2xl rounded-bl-none p-3 max-w-lg">
-            <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"></div>
+    <div className="flex justify-start" role="status">
+        <div className="clay-card rounded-bl-md px-5 py-4">
+            <span className="sr-only">Aura is replying</span>
+            <div className="flex items-center gap-1.5" aria-hidden="true">
+                <span className="h-2.5 w-2.5 rounded-full bg-leaf" />
+                <span className="h-2.5 w-2.5 rounded-full bg-sand" />
+                <span className="h-2.5 w-2.5 rounded-full bg-coral" />
             </div>
         </div>
     </div>
 );
 
 const ChatScreen: React.FC = () => {
-    const { theme, toggleTheme, preferences, updatePreferences } = useTheme();
+    const { preferences, updatePreferences } = usePreferences();
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -98,7 +100,8 @@ const ChatScreen: React.FC = () => {
     }, [sessionId]);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        messagesEndRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
     };
 
     useEffect(() => {
@@ -240,130 +243,113 @@ const ChatScreen: React.FC = () => {
     };
 
     return (
-        <div className="relative flex flex-col h-screen max-w-4xl mx-auto overflow-hidden">
-            {/* 3D Grid Background */}
-            <div className="grid-3d-background">
-                <div className="grid-3d-container">
-                    <div className="grid-3d-lines"></div>
-                    <div className="grid-3d-dots"></div>
-                </div>
-                <div className="grid-particles">
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                    <div className="particle"></div>
-                </div>
-            </div>
-            
+        <div className="relative mx-auto flex h-[100dvh] max-w-4xl flex-col">
             {/* Main Chat Container */}
-            <div className="chat-container-3d flex flex-col h-full rounded-lg overflow-hidden transition-all duration-300 animate-scale-in">
+            <div className="clay-surface flex h-full min-h-0 flex-col gap-3 p-3 sm:gap-4 sm:p-5">
                 {showMoodModal && <MoodCheckIn onClose={() => setShowMoodModal(false)} onSaveMood={handleSaveMood} />}
                 {showAnalytics && <MoodAnalytics moodLogs={moodLogs} onClose={() => setShowAnalytics(false)} />}
                 {showResources && <WellnessResources onClose={() => setShowResources(false)} />}
                 {showGoalsReminders && <GoalsAndReminders onClose={() => setShowGoalsReminders(false)} />}
-            <header className="glass-header flex items-center justify-between p-4 transition-all duration-300">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-xl font-bold text-purple-700 dark:text-purple-400 animate-pulse-subtle">AI Wellness Companion</h1>
-                    <button 
-                        onClick={handleClearChat}
-                        className="glass-button text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-all duration-200 px-3 py-1 rounded-full button-press hover-lift"
-                        title="Clear chat history"
-                    >
-                        Clear Chat
-                    </button>
+            <header className="clay-card flex flex-col gap-3 p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-coral shadow-clay-sm" aria-hidden="true">
+                            <HeartPulse className="h-6 w-6" strokeWidth={2.25} />
+                        </span>
+                        <h1 className="text-xl font-extrabold leading-tight text-ink">AI Wellness Companion</h1>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowVoiceSettings(!showVoiceSettings)}
+                            className={`clay-btn clay-btn-icon ${preferences.voiceEnabled ? 'clay-leaf' : ''}`}
+                            aria-pressed={showVoiceSettings}
+                            aria-label="Voice settings"
+                            title="Voice settings"
+                        >
+                            <Mic className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleClearChat}
+                            className="clay-btn clay-btn-icon sm:w-auto sm:px-4"
+                            aria-label="Clear Chat"
+                            title="Clear chat history"
+                        >
+                            <RotateCcw className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+                            <span className="hidden text-sm sm:inline">Clear Chat</span>
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <nav className="flex items-center gap-2 sm:gap-3" aria-label="Wellness tools">
                     <button
-                        onClick={() => {
-                            console.log('ChatScreen theme toggle clicked!');
-                            toggleTheme();
-                        }}
-                        className="glass-button p-2 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-600/50 transition-all duration-200 button-press hover-lift"
-                        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                        type="button"
+                        onClick={() => setShowMoodModal(true)}
+                        className="clay-btn clay-coral flex-1 px-4 font-extrabold sm:flex-none sm:px-6"
                     >
-                        {theme === 'light' ? '🌙' : '☀️'}
+                        <Smile className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+                        <span>How are you?</span>
                     </button>
-                    <button 
-                        onClick={() => setShowVoiceSettings(!showVoiceSettings)}
-                        className={`glass-button p-2 rounded-full transition-all duration-200 button-press hover-lift ${
-                            preferences.voiceEnabled 
-                                ? 'bg-green-100/70 dark:bg-green-900/70 text-green-700 dark:text-green-300 animate-pulse-subtle' 
-                                : 'hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                        }`}
-                        title="Voice settings"
-                    >
-                        🎤
-                    </button>
-                    <button 
+                    <button
+                        type="button"
                         onClick={() => setShowGoalsReminders(true)}
-                        className="glass-button flex items-center gap-2 bg-yellow-100/70 dark:bg-yellow-900/70 text-yellow-700 dark:text-yellow-300 font-semibold py-2 px-4 rounded-full hover:bg-yellow-200/70 dark:hover:bg-yellow-800/70 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 button-press hover-lift"
+                        className="clay-btn clay-btn-icon clay-sand md:w-auto md:px-4"
+                        aria-label="Goals"
                         title="Goals and reminders"
                     >
-                        🎯 Goals
+                        <Target className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+                        <span className="hidden md:inline">Goals</span>
                     </button>
-                    <button 
+                    <button
+                        type="button"
                         onClick={() => setShowResources(true)}
-                        className="glass-button flex items-center gap-2 bg-green-100/70 dark:bg-green-900/70 text-green-700 dark:text-green-300 font-semibold py-2 px-4 rounded-full hover:bg-green-200/70 dark:hover:bg-green-800/70 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-green-400 button-press hover-lift"
+                        className="clay-btn clay-btn-icon clay-mint md:w-auto md:px-4"
+                        aria-label="Resources"
                         title="Wellness resources"
                     >
-                        🧘 Resources
+                        <Sprout className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+                        <span className="hidden md:inline">Resources</span>
                     </button>
-                    <button 
+                    <button
+                        type="button"
                         onClick={() => setShowAnalytics(true)}
-                        className="glass-button flex items-center gap-2 bg-blue-100/70 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300 font-semibold py-2 px-4 rounded-full hover:bg-blue-200/70 dark:hover:bg-blue-800/70 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 button-press hover-lift"
+                        className="clay-btn clay-btn-icon clay-mint md:w-auto md:px-4"
+                        aria-label="Analytics"
                         title="View mood analytics"
                     >
-                        📊 Analytics
+                        <BarChart3 className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+                        <span className="hidden md:inline">Analytics</span>
                     </button>
-                    <button 
-                      onClick={() => setShowMoodModal(true)}
-                      className="glass-button flex items-center gap-2 bg-purple-100/70 dark:bg-purple-900/70 text-purple-700 dark:text-purple-300 font-semibold py-2 px-4 rounded-full hover:bg-purple-200/70 dark:hover:bg-purple-800/70 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-400 button-press hover-lift animate-bounce-gentle"
-                    >
-                      <FaceSmileIcon className="w-5 h-5"/>
-                      <span>How are you?</span>
-                    </button>
-                </div>
-            </header>
+                </nav>
 
             {/* Voice Settings Panel */}
             {showVoiceSettings && (
-                <div className="glass-header border-b-0 p-4">
+                <div className="clay-well p-4">
                     <VoiceControls
                         onTranscript={handleVoiceTranscript}
                         onSpeakResponse={handleSpeakResponse}
                         isEnabled={preferences.voiceEnabled}
                         onToggle={handleVoiceToggle}
                     />
-                    
+
                     {/* Auto-speak setting */}
                     {preferences.voiceEnabled && (
-                        <div className="mt-3 flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <div className="mt-3 flex items-center justify-between gap-4">
+                            <span className="text-sm font-bold text-ink">
                                 Auto-speak AI responses
                             </span>
-                            <button
-                                onClick={() => updatePreferences({ voiceAutoSpeak: !preferences.voiceAutoSpeak })}
-                                className={`glass-button relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 ${
-                                    preferences.voiceAutoSpeak ? 'bg-purple-600/80' : 'bg-gray-300/80 dark:bg-gray-600/80'
-                                }`}
-                            >
-                                <div
-                                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform duration-200 ${
-                                        preferences.voiceAutoSpeak ? 'transform translate-x-6' : ''
-                                    }`}
-                                />
-                            </button>
+                            <ClaySwitch
+                                checked={preferences.voiceAutoSpeak}
+                                onChange={() => updatePreferences({ voiceAutoSpeak: !preferences.voiceAutoSpeak })}
+                                label="Auto-speak AI responses"
+                            />
                         </div>
                     )}
                 </div>
             )}
+            </header>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+            <div className="clay-scroll -mx-3 min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-2 sm:-mx-5 sm:px-5" aria-live="polite">
                 {messages.map((msg, index) =>
                     msg.role === 'model' ? (
                         <AIMessageBubble key={index} text={msg.parts[0].text} />
@@ -375,32 +361,35 @@ const ChatScreen: React.FC = () => {
                 <div ref={messagesEndRef} />
             </div>
 
-            <footer className="glass-footer p-4 transition-all duration-300">
+            <footer className="clay-card p-3 sm:p-4">
                 {error && (
-                    <div className="mb-2 p-3 bg-red-50/80 dark:bg-red-900/50 border border-red-200/50 dark:border-red-800/50 rounded-lg animate-scale-in backdrop-blur-sm">
-                        <p className="text-red-500 dark:text-red-400 text-sm text-center">{error}</p>
+                    <div className="mb-3 flex items-start gap-3 rounded-clay bg-sand px-4 py-3" role="alert">
+                        <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-clay" aria-hidden="true" />
+                        <p className="text-sm font-bold text-ink">{error}</p>
                     </div>
                 )}
-                <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                     <input
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="Type your message here..."
-                        className="glass-input flex-1 p-3 rounded-full text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none transition-all duration-200 hover-lift"
+                        aria-label="Message"
+                        className="clay-input min-h-[3.25rem] flex-1 rounded-full px-5 text-base"
                         disabled={isLoading}
                     />
                     <button
                         type="submit"
                         disabled={isLoading || !inputValue.trim()}
-                        className="glass-button bg-purple-600/90 text-white p-3 rounded-full hover:bg-purple-700/90 disabled:bg-purple-300/70 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-purple-300/50 transition-all duration-300 transform hover:scale-110 button-press hover-lift"
+                        className="clay-btn clay-coral h-[3.25rem] w-[3.25rem] flex-shrink-0 p-0"
+                        aria-label="Send message"
                     >
-                        <SendIcon className="w-6 h-6"/>
+                        <SendHorizontal className="h-6 w-6" strokeWidth={2.25} aria-hidden="true" />
                     </button>
                 </form>
             </footer>
             </div>
-            
+
             {/* Crisis Alert Modal */}
             {showCrisisAlert && (
                 <CrisisAlert resources={crisisResources} onClose={() => setShowCrisisAlert(false)} />

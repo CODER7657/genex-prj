@@ -8,14 +8,19 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --exclude \"e2e/**\" --exclude \"node_modules/**\"",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@fontsource/nunito": "^5.3.0",
     "@google/genai": "^1.20.0",
+    "lucide-react": "^1.70.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.14.0",

@@ -1,90 +1,56 @@
 /** @type {import('tailwindcss').Config} */
+// Clay Style: the theme is replaced (not extended) with the tokens in tokens.css, so the
+// stock purple/pink/blue/gray palette, thin weights and fixed font sizes cannot be used.
 export default {
   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./**/*.{js,ts,jsx,tsx}"
+    './index.html',
+    './*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './contexts/**/*.{ts,tsx}',
   ],
-  darkMode: 'class',
   theme: {
+    colors: {
+      transparent: 'transparent',
+      current: 'currentColor',
+      mint: 'var(--mint)',
+      coral: 'var(--coral)',
+      leaf: 'var(--leaf)',
+      sand: 'var(--sand)',
+      clay: 'var(--clay)',
+      white: 'var(--white)',
+      ink: 'var(--ink)',
+      'ink-soft': 'var(--ink-soft)',
+    },
+    fontFamily: {
+      sans: ['var(--font-sans)'],
+    },
+    fontSize: {
+      sm: ['var(--fs-sm)', { lineHeight: '1.45' }],
+      base: ['var(--fs-base)', { lineHeight: '1.55' }],
+      lg: ['var(--fs-lg)', { lineHeight: '1.45' }],
+      xl: ['var(--fs-xl)', { lineHeight: '1.3' }],
+      '2xl': ['var(--fs-2xl)', { lineHeight: '1.2' }],
+      '3xl': ['var(--fs-3xl)', { lineHeight: '1.15' }],
+      hero: ['var(--fs-hero)', { lineHeight: '1.08' }],
+    },
+    fontWeight: {
+      semibold: '600',
+      bold: '700',
+      extrabold: '800',
+    },
     extend: {
-      animation: {
-        'fade-in-up': 'fadeInUp 0.5s ease-out',
-        'bounce-gentle': 'bounceGentle 2s ease-in-out infinite',
-        'scale-in': 'scaleIn 0.3s ease-out',
-        'slide-in-right': 'slideInRight 0.4s ease-out',
-        'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
-        'message-slide-in': 'messageSlideIn 0.3s ease-out',
-        'shimmer': 'shimmer 2s ease-in-out infinite',
+      borderRadius: {
+        clay: 'var(--radius-md)',
+        'clay-lg': 'var(--radius-lg)',
+        'clay-xl': 'var(--radius-xl)',
       },
-      keyframes: {
-        fadeInUp: {
-          '0%': {
-            opacity: '0',
-            transform: 'translateY(30px)',
-          },
-          '100%': {
-            opacity: '1',
-            transform: 'translateY(0)',
-          },
-        },
-        bounceGentle: {
-          '0%, 100%': {
-            transform: 'translateY(0)',
-          },
-          '50%': {
-            transform: 'translateY(-10px)',
-          },
-        },
-        scaleIn: {
-          '0%': {
-            opacity: '0',
-            transform: 'scale(0.9)',
-          },
-          '100%': {
-            opacity: '1',
-            transform: 'scale(1)',
-          },
-        },
-        slideInRight: {
-          '0%': {
-            opacity: '0',
-            transform: 'translateX(20px)',
-          },
-          '100%': {
-            opacity: '1',
-            transform: 'translateX(0)',
-          },
-        },
-        pulseSubtle: {
-          '0%, 100%': {
-            opacity: '1',
-          },
-          '50%': {
-            opacity: '0.7',
-          },
-        },
-        messageSlideIn: {
-          '0%': {
-            opacity: '0',
-            transform: 'translateY(20px)',
-          },
-          '100%': {
-            opacity: '1',
-            transform: 'translateY(0)',
-          },
-        },
-        shimmer: {
-          '0%': {
-            backgroundPosition: '-200% 0',
-          },
-          '100%': {
-            backgroundPosition: '200% 0',
-          },
-        },
+      boxShadow: {
+        clay: 'var(--shadow-clay)',
+        'clay-sm': 'var(--shadow-clay-sm)',
+        'clay-pressed': 'var(--shadow-clay-pressed)',
+        well: 'var(--shadow-well)',
       },
     },
   },
   plugins: [],
-}
-
+};

@@ -1,45 +1,36 @@
-
 import React from 'react';
-import { useTheme } from '../contexts/ThemeContext';
-import { HeartPulseIcon } from './icons';
+import { ArrowRight, HeartPulse } from 'lucide-react';
 
 interface WelcomeScreenProps {
     onStartChat: () => void;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
-    const { theme, toggleTheme } = useTheme();
-
-    const handleToggleTheme = () => {
-        console.log('Theme toggle button clicked!');
-        toggleTheme();
-    };
-
     return (
-        <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-fade-in-up">
-            <div className="absolute top-8 right-8 animate-scale-in">
-                <button
-                    onClick={handleToggleTheme}
-                    className="p-3 rounded-full bg-white/60 dark:bg-gray-800/60 backdrop-blur-md hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300 shadow-lg hover-lift button-press"
-                    title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-                >
-                    {theme === 'light' ? '🌙' : '☀️'}
-                </button>
-            </div>
-            
-            <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-md p-10 rounded-3xl shadow-lg hover-lift animate-scale-in">
-                <HeartPulseIcon className="w-24 h-24 text-purple-500 dark:text-purple-400 mx-auto mb-6 animate-bounce-gentle" />
-                <h1 className="text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-200 mb-3 animate-slide-in-right">
+        <div className="clay-surface relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-8">
+            {/* Decorative clay pebbles */}
+            <span aria-hidden="true" className="clay-pebble bg-coral -left-10 top-[8%] h-28 w-36 sm:h-40 sm:w-52" />
+            <span aria-hidden="true" className="clay-pebble bg-leaf -right-12 top-[18%] h-24 w-28 sm:h-36 sm:w-44" />
+            <span aria-hidden="true" className="clay-pebble bg-sand -bottom-10 left-[12%] h-28 w-44 sm:h-36 sm:w-64" />
+            <span aria-hidden="true" className="clay-pebble bg-white -bottom-6 right-[10%] h-20 w-24 sm:h-28 sm:w-32" />
+
+            <div className="clay-card relative w-full max-w-2xl px-6 py-10 text-center sm:px-12 sm:py-14">
+                <span className="clay-card mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-clay-xl bg-coral sm:h-28 sm:w-28" aria-hidden="true">
+                    <HeartPulse className="h-12 w-12 sm:h-14 sm:w-14" strokeWidth={2.25} />
+                </span>
+                <h1 className="mb-4 text-hero font-extrabold tracking-tight text-ink">
                     Welcome to Your AI Wellness Companion
                 </h1>
-                <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8 animate-slide-in-right [animation-delay:0.2s]">
+                <p className="mx-auto mb-9 max-w-xl text-lg text-ink-soft">
                     A safe and supportive space to explore your thoughts and feelings. I'm here to listen, without judgment.
                 </p>
                 <button
+                    type="button"
                     onClick={onStartChat}
-                    className="bg-purple-600 text-white font-bold py-3 px-8 rounded-full text-lg hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all duration-300 ease-in-out shadow-md hover-lift button-press animate-pulse-subtle gradient-shimmer overflow-hidden relative"
+                    className="clay-btn clay-coral min-h-[3.5rem] px-8 text-lg font-extrabold"
                 >
-                    <span className="relative z-10">Start a Conversation</span>
+                    Start a Conversation
+                    <ArrowRight className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
                 </button>
             </div>
         </div>

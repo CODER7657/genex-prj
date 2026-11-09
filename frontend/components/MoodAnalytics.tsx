@@ -1,17 +1,20 @@
 import React from 'react';
+import { Activity, ClipboardList, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
 import { MoodLog, Mood } from '../types';
+import { ClayDialog } from './clay';
+import { MOOD_COLOR } from './MoodCheckIn';
 
 interface MoodAnalyticsProps {
     moodLogs: MoodLog[];
     onClose: () => void;
 }
 
-const moodColors: Record<Mood, string> = {
-    ecstatic: '#8B5CF6', // Purple-500
-    happy: '#10B981', // Green-500
-    neutral: '#6B7280', // Gray-500
-    sad: '#F59E0B', // Yellow-500
-    crying: '#EF4444', // Red-500
+const moodColors = MOOD_COLOR;
+
+const trendIcons: Record<string, LucideIcon> = {
+    improving: TrendingUp,
+    declining: TrendingDown,
+    stable: Activity,
 };
 
 const moodValues: Record<Mood, number> = {
@@ -73,94 +76,78 @@ const MoodAnalytics: React.FC<MoodAnalyticsProps> = ({ moodLogs, onClose }) => {
 
     const getTrendMessage = (trend: string) => {
         switch (trend) {
-            case 'improving': return '📈 Your mood has been improving lately!';
-            case 'declining': return '📉 You seem to be going through a tough time. Remember, it\'s okay to seek support.';
-            case 'stable': return '📊 Your mood has been relatively stable.';
-            default: return '📋 Keep logging your mood to see trends over time.';
+            case 'improving': return 'Your mood has been improving lately!';
+            case 'declining': return 'You seem to be going through a tough time. Remember, it\'s okay to seek support.';
+            case 'stable': return 'Your mood has been relatively stable.';
+            default: return 'Keep logging your mood to see trends over time.';
         }
     };
 
     if (!stats) {
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">Mood Analytics</h2>
-                        <button 
-                            onClick={onClose}
-                            className="text-gray-500 hover:text-gray-700 text-2xl"
-                        >
-                            ×
-                        </button>
-                    </div>
-                    
-                    <div className="text-center py-12">
-                        <p className="text-gray-500 mb-4">No mood data available yet.</p>
-                        <p className="text-sm text-gray-400">Start logging your moods to see insights and trends!</p>
-                    </div>
+            <ClayDialog title="Mood Analytics" onClose={onClose}>
+                <div className="clay-well px-6 py-12 text-center">
+                    <p className="mb-2 text-lg font-bold text-ink">No mood data available yet.</p>
+                    <p className="text-base text-ink-soft">Start logging your moods to see insights and trends!</p>
                 </div>
-            </div>
+            </ClayDialog>
         );
     }
 
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Mood Analytics</h2>
-                    <button 
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 text-2xl"
-                    >
-                        ×
-                    </button>
-                </div>
+    const TrendIcon = trendIcons[trend] ?? ClipboardList;
 
+    return (
+        <ClayDialog title="Mood Analytics" onClose={onClose} width="max-w-4xl">
                 {/* Overview Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-purple-50 rounded-lg p-4 text-center">
-                        <h3 className="text-lg font-semibold text-purple-700 mb-2">Total Check-ins</h3>
-                        <p className="text-3xl font-bold text-purple-600">{stats.totalLogs}</p>
+                <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="clay-card bg-mint p-5 text-center">
+                        <h3 className="mb-1 text-base font-bold text-ink-soft">Total Check-ins</h3>
+                        <p className="text-3xl font-extrabold text-ink">{stats.totalLogs}</p>
                     </div>
-                    
-                    <div className="bg-blue-50 rounded-lg p-4 text-center">
-                        <h3 className="text-lg font-semibold text-blue-700 mb-2">Average Mood</h3>
-                        <p className="text-3xl font-bold text-blue-600">{stats.averageMood.toFixed(1)}/5</p>
+
+                    <div className="clay-card bg-sand p-5 text-center">
+                        <h3 className="mb-1 text-base font-bold text-ink-soft">Average Mood</h3>
+                        <p className="text-3xl font-extrabold text-ink">{stats.averageMood.toFixed(1)}/5</p>
                     </div>
-                    
-                    <div className="bg-green-50 rounded-lg p-4 text-center">
-                        <h3 className="text-lg font-semibold text-green-700 mb-2">Most Common</h3>
-                        <p className="text-2xl font-bold text-green-600 capitalize">{stats.mostCommonMood}</p>
+
+                    <div className="clay-card p-5 text-center">
+                        <h3 className="mb-1 text-base font-bold text-ink-soft">Most Common</h3>
+                        <p className="text-3xl font-extrabold capitalize text-ink">{stats.mostCommonMood}</p>
                     </div>
                 </div>
 
                 {/* Trend Analysis */}
-                <div className="bg-gray-50 rounded-lg p-6 mb-8">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Recent Trend (Last 7 Days)</h3>
-                    <p className="text-gray-600">{getTrendMessage(trend)}</p>
+                <div className="clay-well mb-8 flex items-start gap-4 p-5">
+                    <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-mint shadow-clay-sm" aria-hidden="true">
+                        <TrendIcon className="h-5 w-5" strokeWidth={2.25} />
+                    </span>
+                    <div>
+                        <h3 className="mb-1 text-lg font-extrabold text-ink">Recent Trend (Last 7 Days)</h3>
+                        <p className="text-base text-ink-soft">{getTrendMessage(trend)}</p>
+                    </div>
                 </div>
 
                 {/* Mood Distribution Chart */}
                 <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Mood Distribution</h3>
+                    <h3 className="mb-4 text-lg font-extrabold text-ink">Mood Distribution</h3>
                     <div className="space-y-3">
                         {(Object.entries(stats.moodCounts) as [Mood, number][]).map(([mood, count]) => {
                             const percentage = (count / stats.totalLogs) * 100;
                             return (
-                                <div key={mood} className="flex items-center">
-                                    <div className="w-20 text-sm font-medium capitalize text-gray-600">
+                                <div key={mood} className="flex items-center gap-3">
+                                    <div className="w-20 text-sm font-bold capitalize text-ink">
                                         {mood}
                                     </div>
-                                    <div className="flex-1 bg-gray-200 rounded-full h-6 mx-3 relative overflow-hidden">
-                                        <div 
-                                            className="h-full rounded-full transition-all duration-500 ease-out"
-                                            style={{ 
+                                    <div className="clay-well relative h-7 flex-1 overflow-hidden rounded-full">
+                                        <div
+                                            className="h-full rounded-full shadow-clay-sm"
+                                            style={{
                                                 width: `${percentage}%`,
                                                 backgroundColor: moodColors[mood]
                                             }}
                                         />
                                     </div>
-                                    <div className="w-16 text-sm text-gray-600 text-right">
+                                    <div className="w-24 text-right text-sm text-ink-soft">
                                         {count} ({percentage.toFixed(1)}%)
                                     </div>
                                 </div>
@@ -171,34 +158,33 @@ const MoodAnalytics: React.FC<MoodAnalyticsProps> = ({ moodLogs, onClose }) => {
 
                 {/* Recent Entries */}
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Entries</h3>
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                    <h3 className="mb-4 text-lg font-extrabold text-ink">Recent Entries</h3>
+                    <div className="clay-scroll max-h-60 space-y-3 overflow-y-auto p-1">
                         {moodLogs
                             .slice(-10)
                             .reverse()
                             .map((log, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <div className="flex items-center">
-                                    <div 
-                                        className="w-4 h-4 rounded-full mr-3"
+                            <div key={index} className="clay-well flex items-center justify-between gap-3 p-3">
+                                <div className="flex min-w-0 items-center">
+                                    <div
+                                        className="mr-3 h-4 w-4 flex-shrink-0 rounded-full shadow-clay-sm"
                                         style={{ backgroundColor: moodColors[log.mood] }}
                                     />
-                                    <span className="font-medium capitalize">{log.mood}</span>
+                                    <span className="font-bold capitalize text-ink">{log.mood}</span>
                                     {log.note && (
-                                        <span className="ml-2 text-sm text-gray-600 italic">
+                                        <span className="ml-2 truncate text-sm text-ink-soft">
                                             "{log.note}"
                                         </span>
                                     )}
                                 </div>
-                                <span className="text-sm text-gray-500">
+                                <span className="flex-shrink-0 text-sm text-ink-soft">
                                     {log.timestamp.toLocaleDateString()}
                                 </span>
                             </div>
                         ))}
                     </div>
                 </div>
-            </div>
-        </div>
+        </ClayDialog>
     );
 };
 

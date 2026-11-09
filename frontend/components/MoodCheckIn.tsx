@@ -1,21 +1,29 @@
-
 import React, { useState } from 'react';
+import { Check, CloudRain, Frown, Laugh, Meh, Smile, type LucideIcon } from 'lucide-react';
 import { Mood } from '../types';
-import { CryingFaceIcon, EcstaticFaceIcon, HappyFaceIcon, NeutralFaceIcon, SadFaceIcon } from './icons';
+import { ClayDialog } from './clay';
 
 interface MoodCheckInProps {
     onClose: () => void;
     onSaveMood: (mood: Mood, note?: string) => void;
 }
 
-const moodOptions: { mood: Mood, label: string, icon: React.ReactNode }[] = [
-    { mood: 'ecstatic', label: 'Ecstatic', icon: <EcstaticFaceIcon className="w-12 h-12" /> },
-    { mood: 'happy', label: 'Happy', icon: <HappyFaceIcon className="w-12 h-12" /> },
-    { mood: 'neutral', label: 'Neutral', icon: <NeutralFaceIcon className="w-12 h-12" /> },
-    { mood: 'sad', label: 'Sad', icon: <SadFaceIcon className="w-12 h-12" /> },
-    { mood: 'crying', label: 'Crying', icon: <CryingFaceIcon className="w-12 h-12" /> },
-];
+/** Each mood's clay colour; shared with MoodAnalytics so the two read as one system. */
+export const MOOD_COLOR: Record<Mood, string> = {
+    ecstatic: 'var(--leaf)',
+    happy: 'var(--mint)',
+    neutral: 'var(--sand)',
+    sad: 'var(--coral)',
+    crying: 'var(--clay)',
+};
 
+const moodOptions: { mood: Mood; label: string; Icon: LucideIcon }[] = [
+    { mood: 'ecstatic', label: 'Ecstatic', Icon: Laugh },
+    { mood: 'happy', label: 'Happy', Icon: Smile },
+    { mood: 'neutral', label: 'Neutral', Icon: Meh },
+    { mood: 'sad', label: 'Sad', Icon: Frown },
+    { mood: 'crying', label: 'Crying', Icon: CloudRain },
+];
 
 const MoodCheckIn: React.FC<MoodCheckInProps> = ({ onClose, onSaveMood }) => {
     const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
@@ -28,49 +36,59 @@ const MoodCheckIn: React.FC<MoodCheckInProps> = ({ onClose, onSaveMood }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full animate-fade-in-up">
-                <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">How are you feeling right now?</h2>
-                <p className="text-center text-gray-500 mb-6">Select a mood that best describes you.</p>
-
-                <div className="flex justify-around items-center mb-6">
-                    {moodOptions.map(({ mood, icon, label }) => (
+        <ClayDialog
+            title="How are you feeling right now?"
+            subtitle="Select a mood that best describes you."
+            onClose={onClose}
+            closeLabel="Cancel"
+            width="max-w-2xl"
+        >
+            <div className="mb-7 flex flex-wrap justify-center gap-3 sm:gap-4" role="group" aria-label="Moods">
+                {moodOptions.map(({ mood, label, Icon }) => {
+                    const selected = selectedMood === mood;
+                    return (
                         <button
                             key={mood}
+                            type="button"
                             onClick={() => setSelectedMood(mood)}
-                            className={`flex flex-col items-center p-2 rounded-lg transition-all duration-200 transform hover:scale-110 focus:outline-none ${selectedMood === mood ? 'text-purple-600' : 'text-gray-400 hover:text-purple-500'}`}
-                            aria-label={label}
+                            aria-pressed={selected}
+                            className={`clay-btn relative w-[5.75rem] flex-col gap-2 rounded-clay-lg px-2 pb-3 pt-4 sm:w-[6.5rem] ${selected ? 'outline outline-[3px] outline-ink outline-offset-2' : ''}`}
                         >
-                            {icon}
-                            <span className={`mt-2 text-xs font-semibold ${selectedMood === mood ? 'text-purple-600' : 'text-gray-500'}`}>{label}</span>
+                            <span
+                                className="flex h-14 w-14 items-center justify-center rounded-full shadow-clay-sm sm:h-16 sm:w-16"
+                                style={{ backgroundColor: MOOD_COLOR[mood] }}
+                                aria-hidden="true"
+                            >
+                                <Icon className="h-8 w-8 sm:h-9 sm:w-9" strokeWidth={2.25} />
+                            </span>
+                            <span className="text-sm font-extrabold">{label}</span>
+                            {selected ? (
+                                <span className="absolute -right-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-ink text-white" aria-hidden="true">
+                                    <Check className="h-4 w-4" strokeWidth={3} />
+                                </span>
+                            ) : null}
                         </button>
-                    ))}
-                </div>
-
-                <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="What's making you feel this way? (Optional)"
-                    className="w-full p-3 border border-gray-300 rounded-lg h-24 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 transition-shadow duration-200"
-                />
-
-                <div className="flex justify-end gap-4 mt-6">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2 text-gray-700 bg-gray-100 rounded-full font-semibold hover:bg-gray-200 transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={!selectedMood}
-                        className="px-6 py-2 text-white bg-purple-600 rounded-full font-semibold hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition-colors"
-                    >
-                        Save
-                    </button>
-                </div>
+                    );
+                })}
             </div>
-        </div>
+
+            <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="What's making you feel this way? (Optional)"
+                aria-label="What's making you feel this way? (Optional)"
+                className="clay-input h-28 resize-none p-4 text-base"
+            />
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+                <button type="button" onClick={onClose} className="clay-btn px-6">
+                    Cancel
+                </button>
+                <button type="button" onClick={handleSave} disabled={!selectedMood} className="clay-btn clay-coral px-8">
+                    Save
+                </button>
+            </div>
+        </ClayDialog>
     );
 };
 

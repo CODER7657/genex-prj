@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { voiceService } from '../services/voiceService';
-import { useTheme } from '../contexts/ThemeContext';
+import { Mic, Square, Volume2 } from 'lucide-react';
+import { usePreferences } from '../contexts/PreferencesContext';
+import { ClaySwitch } from './clay';
 
 interface VoiceControlsProps {
   onTranscript: (text: string) => void;
@@ -15,7 +17,7 @@ const VoiceControls: React.FC<VoiceControlsProps> = ({
   isEnabled,
   onToggle
 }) => {
-  const { preferences } = useTheme();
+  const { preferences } = usePreferences();
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,45 +129,35 @@ const VoiceControls: React.FC<VoiceControlsProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {/* Voice Toggle */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-sm font-bold text-ink">
           Voice Features
         </span>
-        <button
-          onClick={toggleVoiceFeatures}
-          className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 ${
-            isEnabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
-          }`}
-        >
-          <div
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform duration-200 ${
-              isEnabled ? 'transform translate-x-6' : ''
-            }`}
-          />
-        </button>
+        <ClaySwitch checked={isEnabled} onChange={toggleVoiceFeatures} label="Voice Features" />
       </div>
 
       {/* Voice Controls */}
       {isEnabled && (
-        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div className="flex items-center gap-6 rounded-clay bg-mint p-3">
           {/* Speech-to-Text */}
           {voiceService.isSpeechRecognitionSupported() && (
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center gap-1">
               <button
+                type="button"
                 onClick={isListening ? stopListening : startListening}
                 disabled={!hasPermission}
-                className={`p-3 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 ${
-                  isListening
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                    : 'bg-purple-100 dark:bg-purple-900 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300'
-                } ${!hasPermission ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`clay-btn clay-btn-icon ${isListening ? 'clay-coral' : ''}`}
+                aria-pressed={isListening}
+                aria-label={isListening ? 'Stop listening' : 'Start voice input'}
                 title={isListening ? 'Stop listening' : 'Start voice input'}
               >
-                {isListening ? '🔴' : '🎤'}
+                {isListening
+                  ? <Square className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+                  : <Mic className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />}
               </button>
-              <span className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <span className="text-sm text-ink">
                 {isListening ? 'Listening...' : 'Voice Input'}
               </span>
             </div>
@@ -173,19 +165,20 @@ const VoiceControls: React.FC<VoiceControlsProps> = ({
 
           {/* Text-to-Speech */}
           {voiceService.isSpeechSynthesisSupported() && (
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center gap-1">
               <button
+                type="button"
                 onClick={isSpeaking ? stopSpeaking : () => speakText('Voice output is ready')}
-                className={`p-3 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                  isSpeaking
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white animate-pulse'
-                    : 'bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300'
-                }`}
+                className={`clay-btn clay-btn-icon ${isSpeaking ? 'clay-coral' : ''}`}
+                aria-pressed={isSpeaking}
+                aria-label={isSpeaking ? 'Stop speaking' : 'Test voice output'}
                 title={isSpeaking ? 'Stop speaking' : 'Test voice output'}
               >
-                {isSpeaking ? '🔊' : '🔊'}
+                {isSpeaking
+                  ? <Square className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+                  : <Volume2 className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />}
               </button>
-              <span className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <span className="text-sm text-ink">
                 {isSpeaking ? 'Speaking...' : 'Voice Output'}
               </span>
             </div>
@@ -195,8 +188,8 @@ const VoiceControls: React.FC<VoiceControlsProps> = ({
 
       {/* Live Transcript */}
       {isListening && transcript && (
-        <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded border-l-4 border-purple-500">
-          <span className="text-sm text-purple-700 dark:text-purple-300">
+        <div className="rounded-clay border-l-4 border-leaf bg-white p-3 shadow-well">
+          <span className="text-sm text-ink">
             "{transcript}"
           </span>
         </div>
@@ -204,15 +197,15 @@ const VoiceControls: React.FC<VoiceControlsProps> = ({
 
       {/* Error Display */}
       {error && (
-        <div className="p-2 bg-red-50 dark:bg-red-900/30 rounded border-l-4 border-red-500">
-          <span className="text-sm text-red-700 dark:text-red-300">{error}</span>
+        <div className="rounded-clay border-l-4 border-clay bg-sand p-3" role="alert">
+          <span className="text-sm font-bold text-ink">{error}</span>
         </div>
       )}
 
       {/* Browser Support Info */}
       {!hasPermission && isEnabled && (
-        <div className="p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded border-l-4 border-yellow-500">
-          <span className="text-sm text-yellow-700 dark:text-yellow-300">
+        <div className="rounded-clay border-l-4 border-coral bg-sand p-3">
+          <span className="text-sm text-ink">
             Please allow microphone access for voice input features.
           </span>
         </div>

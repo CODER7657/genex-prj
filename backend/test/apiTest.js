@@ -27,7 +27,6 @@ async function runAPITests() {
     console.log('✅ User registered successfully');
     console.log('   Status:', registerResponse.status);
     console.log('   User ID:', registerResponse.data.user.id);
-    const token = registerResponse.data.token;
     console.log();
 
     // Test 2: Login with the user

@@ -33,7 +33,7 @@ const SHORTHAND = [
 function normalise(message) {
   let text = String(message || '')
     .normalize('NFKC')
-    .replace(/[​-‍﻿]/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/[‘’ʼ`´]/g, "'")
     .toLowerCase()
     .replace(/\s+/g, ' ')

@@ -6,18 +6,9 @@
 // Setup minimal environment for testing
 process.env.NODE_ENV = 'test';
 
-const path = require('path');
 const { Sequelize } = require('sequelize');
-const winston = require('winston');
 
 // Configure logger for testing
-const logger = winston.createLogger({
-  level: 'error', // Only show errors during testing
-  format: winston.format.simple(),
-  transports: [
-    new winston.transports.Console({ silent: true }) // Silent during tests
-  ]
-});
 
 // Setup in-memory database for testing
 const sequelize = new Sequelize({

@@ -103,12 +103,9 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
-      # eslint has a script but no configuration in this repository, so it
-      # exits 2 asking to be set up. Reported, not fatal — otherwise the tests
-      # below never run and a missing config reads as a failing test suite.
+      # backend/eslint.config.js: @eslint/js recommended, Node and Jest globals. Fatal.
       - name: Run ESLint
         working-directory: ./backend
-        continue-on-error: true
         run: npm run lint
 
       - name: Run Unit Tests
@@ -164,16 +161,6 @@ jobs:
       - name: Install Frontend Dependencies
         working-directory: ./frontend
         run: npm ci
-
-      # This job used to lint and unit-test the frontend. It has neither: the
-      # package defines dev, build and preview and nothing else, so both steps
-      # failed on a missing script rather than on anything about the code.
-      # Until there are tests to run, CI checks the thing that does exist —
-      # that the frontend builds.
-      - name: Lint (only if configured)
-        working-directory: ./frontend
-        continue-on-error: true
-        run: npm run lint --if-present
 
       - name: Typecheck
         working-directory: ./frontend

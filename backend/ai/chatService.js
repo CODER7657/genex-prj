@@ -5,7 +5,6 @@
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAI = require('openai');
-const natural = require('natural');
 const Sentiment = require('sentiment');
 const winston = require('winston');
 const { route: routeRisk } = require('./safety/riskDetector');
@@ -445,14 +444,6 @@ class ChatService {
   }
 
   /**
-   * Get conversation context for user
-   */
-  getConversationContext(userId, conversationId) {
-    const key = `${userId}-${conversationId || 'default'}`;
-    return this.conversationHistory.get(key) || [];
-  }
-
-  /**
    * Update conversation history
    */
   updateConversationHistory(userId, conversationId, userMessage, aiResponse) {
@@ -506,7 +497,7 @@ class ChatService {
       }
 
       // Store user message
-      const userMsg = await this.models.Message.create({
+      await this.models.Message.create({
         sessionId: session.id,
         userId,
         sender: 'user',
@@ -518,7 +509,7 @@ class ChatService {
       });
 
       // Store AI response
-      const aiMsg = await this.models.Message.create({
+      await this.models.Message.create({
         sessionId: session.id,
         userId,
         sender: 'ai',

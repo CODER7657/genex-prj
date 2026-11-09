@@ -5,7 +5,6 @@
  */
 
 const redis = require('redis');
-const session = require('express-session');
 const RedisStore = require('connect-redis').default;
 const winston = require('winston');
 

@@ -20,11 +20,11 @@ const xss = require('xss-clean');
 const winston = require('winston');
 
 // Import configurations
-const { healthCheck: dbHealthCheck, logger: dbLogger } = require('./config/database');
-const { initRedis, createSessionConfig, healthCheck: redisHealthCheck, logger: redisLogger } = require('./config/redis');
+const { healthCheck: dbHealthCheck } = require('./config/database');
+const { initRedis, createSessionConfig, healthCheck: redisHealthCheck } = require('./config/redis');
 
 // Import middleware
-const { authMiddleware, optionalAuthMiddleware, authRateLimit } = require('./middlewares/auth');
+const { authMiddleware, optionalAuthMiddleware } = require('./middlewares/auth');
 const { 
   corsOptions, 
   rateLimiters, 

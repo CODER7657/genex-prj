@@ -106,24 +106,6 @@ const initDB = async () => {
 };
 
 /**
- * Set up database connection event listeners
- */
-const setupConnectionListeners = () => {
-  if (!sequelize) return;
-  
-  // Handle application termination
-  process.on('SIGINT', async () => {
-    await closeConnection();
-    process.exit(0);
-  });
-  
-  process.on('SIGTERM', async () => {
-    await closeConnection();
-    process.exit(0);
-  });
-};
-
-/**
  * Close database connection gracefully
  */
 const closeConnection = async () => {

@@ -150,18 +150,14 @@ userSchema.virtual('chatSessions', {
 });
 
 // Pre-save middleware to hash password
-userSchema.pre('save', async function(next) {
+// Async hooks without next(): mongoose 9 no longer passes it, and a rejected
+// promise fails the save on every version.
+userSchema.pre('save', async function() {
   // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password')) return;
 
-  try {
-    // Hash password with cost of 12
-    const hashedPassword = await bcrypt.hash(this.password, 12);
-    this.password = hashedPassword;
-    next();
-  } catch (error) {
-    next(error);
-  }
+  // Hash password with cost of 12
+  this.password = await bcrypt.hash(this.password, 12);
 });
 
 // Method to check password

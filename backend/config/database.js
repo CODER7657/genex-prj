@@ -48,7 +48,9 @@ const getDatabaseConfig = () => {
     };
   } else {
     // Development SQLite configuration
-    const dbPath = path.join(__dirname, '..', 'data', 'mental_wellness_dev.sqlite');
+    // SQLITE_STORAGE lets the tests point at a throwaway file.
+    const dbPath = process.env.SQLITE_STORAGE ||
+      path.join(__dirname, '..', 'data', 'mental_wellness_dev.sqlite');
     return {
       dialect: 'sqlite',
       storage: dbPath,

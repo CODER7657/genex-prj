@@ -97,7 +97,7 @@ the LLM risk judge. Keys live only in the git-ignored `.env`.
 
 ```bash
 cd backend
-npx jest           # 271 tests, no network: routing guarantees, crisis gate, helplines
+npx jest           # 288 tests, no network: routing guarantees, crisis gate, helplines
 npm run lint
 
 cd ../frontend

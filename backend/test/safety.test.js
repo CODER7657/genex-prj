@@ -113,3 +113,42 @@ describe('fixed safety replies', () => {
     expect(resources('IN').crisis_lines[0]).toMatchObject({ number: expect.stringContaining('14416') });
   });
 });
+
+
+describe('crisis phrasings found by the 2026-11 audit', () => {
+  const { route, isCrisisMessage } = require('../ai/safety/riskDetector');
+  const skip = req => isCrisisMessage(req.body?.message);
+
+  test.each([
+    'mai mar jaunga',
+    'mujhe marna hai',
+    'mai apni jaan de dunga',
+    'i will hang myself',
+    "I'll jump off the bridge",
+    'i want to take an overdose',
+    'life is not worth living',
+    'i want to kill my self',
+    'i want to kil myself',
+    'i wanna k1ll myself',
+    'i want to k i l l myself',
+    'i want to kill\u200bmyself',
+  ])('%s routes to CRISIS', message => {
+    expect(route(message).route).toBe('CRISIS');
+  });
+
+  test.each([
+    'life is worth living after all',
+    'my cat likes to jump off the couch',
+    'the film is about a drug overdose epidemic',
+    'a b c d are the first letters',
+  ])('%s does not route to CRISIS', message => {
+    expect(route(message).route).not.toBe('CRISIS');
+  });
+
+  test('the chat rate limit never stands between a crisis message and its reply', () => {
+    expect(skip({ body: { message: 'i want to kill myself' } })).toBe(true);
+    expect(skip({ body: { message: 'hello there' } })).toBe(false);
+    expect(skip({ body: {} })).toBe(false);
+    expect(skip({ body: { message: { $ne: 1 } } })).toBe(false);
+  });
+});

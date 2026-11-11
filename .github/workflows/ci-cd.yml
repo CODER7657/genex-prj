@@ -118,6 +118,8 @@ jobs:
           NODE_ENV: test
           DATABASE_PATH: ./test.db
           REDIS_URL: redis://localhost:6379
+          # Turns on the session-store tests that talk to the redis service above.
+          REDIS_TEST_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
         run: |
           # The safety suites must be found and run: a green tick with nothing run would

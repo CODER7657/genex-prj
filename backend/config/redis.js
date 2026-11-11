@@ -5,7 +5,7 @@
  */
 
 const redis = require('redis');
-const RedisStore = require('connect-redis').default;
+const { RedisStore } = require('connect-redis');
 const winston = require('winston');
 
 // Logger setup
@@ -26,26 +26,39 @@ const logger = winston.createLogger({
 // Check if Redis should be used (skip in development if unavailable)
 const useRedis = process.env.NODE_ENV === 'production' || process.env.FORCE_REDIS === 'true';
 
-// Redis client configuration
-const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  db: process.env.REDIS_DB || 0,
-  
-  // Connection options
-  connectTimeout: 5000, // Reduced timeout for faster fallback
-  lazyConnect: true,
-  maxRetriesPerRequest: 2, // Reduced retries
-  retryDelayOnFailover: 100,
-  enableReadyCheck: true,
-  
-  // Security options for production
-  ...(process.env.NODE_ENV === 'production' && {
-    tls: {
-      rejectUnauthorized: false
-    }
-  })
+/**
+ * Build the node-redis client options from the environment.
+ *
+ * REDIS_URL wins when it is set. Otherwise the host, port, password and
+ * database number are read one by one. TLS is opt-in (REDIS_TLS=true) and the
+ * server certificate is verified.
+ */
+const redisOptions = (env = process.env) => {
+  const socket = { connectTimeout: 5000 };
+  if (env.REDIS_TLS === 'true') {
+    socket.tls = true;
+  }
+
+  if (env.REDIS_URL) {
+    return { url: env.REDIS_URL, socket };
+  }
+
+  const port = Number(env.REDIS_PORT || 6379);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('REDIS_PORT must be a port number between 1 and 65535');
+  }
+  const database = Number(env.REDIS_DB || 0);
+  if (!Number.isInteger(database) || database < 0) {
+    throw new Error('REDIS_DB must be a database number, 0 or higher');
+  }
+
+  socket.host = env.REDIS_HOST || 'localhost';
+  socket.port = port;
+  return {
+    socket,
+    database,
+    ...(env.REDIS_PASSWORD && { password: env.REDIS_PASSWORD })
+  };
 };
 
 let redisClient;
@@ -64,7 +77,7 @@ const initRedis = async () => {
   try {
     logger.info('🔄 Connecting to Redis...');
     
-    redisClient = redis.createClient(redisConfig);
+    redisClient = redis.createClient(redisOptions());
     
     // Set up event listeners
     setupRedisEventListeners();
@@ -84,6 +97,15 @@ const initRedis = async () => {
   } catch (error) {
     logger.warn('⚠️ Redis unavailable, falling back to memory store:', error.message);
     isRedisAvailable = false;
+
+    // Stop the client, or it keeps retrying in the background and could flip
+    // isRedisAvailable back on after the memory store has been chosen.
+    if (redisClient) {
+      redisClient.removeAllListeners();
+      redisClient.on('error', () => {});
+      redisClient.destroy();
+      redisClient = null;
+    }
     
     // Don't throw error, just return null to use memory store
     return null;
@@ -379,7 +401,6 @@ const healthCheck = async () => {
         type: 'redis',
         responseTime: `${responseTime}ms`,
         connected: true,
-        memoryUsage: await redisClient.memory('usage'),
         timestamp: new Date().toISOString()
       };
     } else {
@@ -428,6 +449,7 @@ process.on('SIGTERM', closeConnection);
 
 module.exports = {
   initRedis,
+  redisOptions,
   createSessionConfig,
   cache,
   sessionUtils,

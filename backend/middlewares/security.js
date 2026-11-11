@@ -342,6 +342,7 @@ module.exports = {
   rateLimiters,
   helmetConfig,
   sanitizeRequest,
+  sanitizeObject,
   hipaaCompliance,
   errorHandler,
   requestTimeout,

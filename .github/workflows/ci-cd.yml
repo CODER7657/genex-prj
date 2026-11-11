@@ -185,7 +185,7 @@ jobs:
           # libraries Chromium needs, so apt is used only if the browser cannot
           # start: an apt mirror outage must not fail a run that needs no package.
           npx playwright install chromium
-          node -e "require('@playwright/test').chromium.launch().then((b) => b.close())" \n            || npx playwright install-deps chromium
+          node -e "require('@playwright/test').chromium.launch().then((b) => b.close())" || npx playwright install-deps chromium
           npm run test:e2e
 
   # Build and Push Docker Images

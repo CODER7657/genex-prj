@@ -181,7 +181,11 @@ jobs:
       - name: Browser tests (Playwright + axe at 375, 768 and 1280 px)
         working-directory: ./frontend
         run: |
-          npx playwright install --with-deps chromium
+          # Download the browser only. The runner image already has the system
+          # libraries Chromium needs, so apt is used only if the browser cannot
+          # start: an apt mirror outage must not fail a run that needs no package.
+          npx playwright install chromium
+          node -e "require('@playwright/test').chromium.launch().then((b) => b.close())" \n            || npx playwright install-deps chromium
           npm run test:e2e
 
   # Build and Push Docker Images

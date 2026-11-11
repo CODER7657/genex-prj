@@ -206,7 +206,9 @@ describeReal('with a real Redis server', () => {
 
   test('a session is written with a TTL, read back and destroyed', async () => {
     const sid = `test-${Date.now()}`;
-    const session = { cookie: { maxAge: 60000 }, userId: 'u1' };
+    // connect-redis takes the TTL from the cookie's expiry date.
+    const expires = new Date(Date.now() + 60 * 1000).toISOString();
+    const session = { cookie: { expires }, userId: 'u1' };
 
     await call('set', sid, session);
     expect(await call('get', sid)).toEqual(session);

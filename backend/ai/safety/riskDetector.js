@@ -37,7 +37,10 @@ function normalise(message) {
     .replace(/[‘’ʼ`´]/g, "'")
     .toLowerCase()
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    // "k i l l myself": letters spaced out to slip past a pattern are joined again.
+    .replace(/\b(?:[a-z] ){3,}[a-z]\b/g, run => run.replace(/ /g, ''))
+    .replace(/\bk[i1!]l{1,2} ?my ?self\b/g, 'kill myself');
   for (const [pattern, replacement] of SHORTHAND) text = text.replace(pattern, replacement);
   return text;
 }
@@ -48,6 +51,10 @@ function normalise(message) {
 const SELF_CRISIS = [
   ['kill_myself', /\b(kill|killing) myself\b/],
   ['kms', /\bkms\b/],
+  ['method_myself', /\b(hang|hanging|drown|drowning|shoot|shooting|poison|poisoning) myself\b/],
+  ['jump', /\b(i|i'll|i will|i'm|going to|want to)\b.{0,20}\bjump(ing)? (off|from|in front of)\b/],
+  ['overdose', /\b(i|i'll|i will|i'm|going to|want to)\b.{0,20}\boverdos(e|ing)\b|\btake an overdose\b/],
+  ['not_worth_living', /\b(not|isn't|no longer) worth living\b/],
   ['unalive', /\bunalive (myself|me)\b/],
   ['sewerslide', /\bsewerslide\b/],
   ['suicide', /\bsuicid(e|al)\b/],
@@ -74,7 +81,10 @@ const SELF_CRISIS = [
   ['self_harm_now', /\b(cut|cutting|burn|burning|burned|burnt|hurt|hurting|harm|harming|hit|hitting) myself\b/],
   ['self_harm', /\bself-harm(ing)?\b/],
   // Hindi in Roman script and in Devanagari
-  ['hi_mar_jana', /\bmar (jana|jaana|jaun|jaunga|jaungi) (hai|chahta|chahti)?/],
+  // No trailing words required: "mai mar jaunga" is the whole message more often than not.
+  ['hi_mar_jana', /\bmar (jana|jaana|jaun|jaunga|jaungi|jaoonga|jaoongi)\b/],
+  ['hi_marna', /\bmarna (hai|chahta|chahti)\b/],
+  ['hi_jaan_dena', /\bjaan de (dunga|dungi|du|doon)\b/],
   ['hi_jeena_nahi', /\bjeena nahi?n? (chahta|chahti|hai)\b/],
   ['hi_khud_ko', /\bkhud ko (khatam|maar|maarna)\b/],
   ['hi_sab_khatam', /\bsab khatam kar (dunga|dungi|du|doon|dena)\b/],
@@ -172,4 +182,9 @@ function route(message) {
   return { route: 'NONE', imminent: false, signals: [] };
 }
 
-module.exports = { route, normalise };
+/** True when a raw request value is a message the rules route to CRISIS. Rules only, no model. */
+function isCrisisMessage(message) {
+  return typeof message === 'string' && route(message.slice(0, 5000)).route === 'CRISIS';
+}
+
+module.exports = { route, normalise, isCrisisMessage };

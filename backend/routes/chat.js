@@ -12,6 +12,8 @@ const chatService = require('../ai/chatService');
 const { authMiddleware } = require('../middlewares/auth');
 const { toClientAiResponse } = require('../ai/clientResponse');
 
+const { isCrisisMessage } = require('../ai/safety/riskDetector');
+
 const router = express.Router();
 
 // Rate limiting for chat routes
@@ -25,7 +27,10 @@ const chatLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.userId || req.ip
+  keyGenerator: (req) => req.user?.userId || req.ip,
+  // A person in crisis who has sent many messages must still reach the crisis reply,
+  // never a "slow down" error. The check is a few regular expressions, no model call.
+  skip: (req) => isCrisisMessage(req.body?.message)
 });
 
 // Crisis rate limiting - more lenient

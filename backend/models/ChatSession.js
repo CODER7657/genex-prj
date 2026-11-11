@@ -198,14 +198,13 @@ chatSessionSchema.virtual('isActive').get(function() {
 });
 
 // Pre-save middleware to update stats
-chatSessionSchema.pre('save', function(next) {
+chatSessionSchema.pre('save', async function() {
   if (this.isModified('stats.lastActivity')) {
     // Update session duration when activity changes
     if (this.createdAt) {
       this.stats.duration = Math.floor((this.stats.lastActivity - this.createdAt) / (1000 * 60));
     }
   }
-  next();
 });
 
 // Method to add a crisis event

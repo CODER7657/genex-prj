@@ -251,11 +251,10 @@ messageSchema.virtual('hasCrisis').get(function() {
 });
 
 // Pre-save middleware to generate messageId if not provided
-messageSchema.pre('save', function(next) {
+messageSchema.pre('save', async function() {
   if (!this.messageId) {
     this.messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
-  next();
 });
 
 // Method to add sentiment analysis

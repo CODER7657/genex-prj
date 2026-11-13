@@ -11,38 +11,31 @@ class ChatSession extends Model {
     this.lastActivity = new Date();
     
     if (messageData.crisis_detected) {
-      this.crisisEvents = this.crisisEvents || [];
-      this.crisisEvents.push({
+      // A new array, not a push: Sequelize only saves a JSON column that was reassigned.
+      this.crisisEvents = [...(this.crisisEvents || []), {
         timestamp: new Date(),
         severity: messageData.crisis_severity || 'medium',
         triggers: messageData.crisis_triggers || [],
         message_id: messageData.id
-      });
+      }];
     }
     
     await this.save();
   }
 
   async updateSessionStats(messageData) {
-    if (!this.aiMetadata) {
-      this.aiMetadata = {};
-    }
-    
-    // Update sentiment tracking
+    // Update sentiment tracking. The column is reassigned as a whole so that
+    // Sequelize saves it; the last 50 entries are kept.
     if (messageData.sentiment) {
-      if (!this.aiMetadata.sentimentHistory) {
-        this.aiMetadata.sentimentHistory = [];
-      }
-      this.aiMetadata.sentimentHistory.push({
-        timestamp: new Date(),
-        sentiment: messageData.sentiment,
-        score: messageData.sentiment_score
-      });
-      
-      // Keep only last 50 sentiment entries
-      if (this.aiMetadata.sentimentHistory.length > 50) {
-        this.aiMetadata.sentimentHistory = this.aiMetadata.sentimentHistory.slice(-50);
-      }
+      const metadata = this.aiMetadata || {};
+      this.aiMetadata = {
+        ...metadata,
+        sentimentHistory: [...(metadata.sentimentHistory || []), {
+          timestamp: new Date(),
+          sentiment: messageData.sentiment,
+          score: messageData.sentiment_score
+        }].slice(-50)
+      };
     }
     
     await this.save();
@@ -97,6 +90,10 @@ const initChatSessionModel = (sequelize) => {
         model: 'users',
         key: 'id'
       }
+    },
+    title: {
+      type: DataTypes.STRING(100),
+      allowNull: true
     },
     sessionType: {
       type: DataTypes.ENUM('general_support', 'crisis_intervention', 'assessment', 'check_in'),

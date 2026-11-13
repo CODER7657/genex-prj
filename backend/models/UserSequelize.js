@@ -43,16 +43,9 @@ class User extends Model {
       userAgent: details.userAgent || 'unknown'
     };
     
-    if (!this.auditLog) {
-      this.auditLog = [];
-    }
-    
-    this.auditLog.push(auditEntry);
-    
-    // Keep only last 100 audit entries
-    if (this.auditLog.length > 100) {
-      this.auditLog = this.auditLog.slice(-100);
-    }
+    // Assign a new array: Sequelize does not see a push into a JSON column,
+    // so the entry would never be written. Keep the last 100 entries.
+    this.auditLog = [...(this.auditLog || []), auditEntry].slice(-100);
     
     await this.save();
   }

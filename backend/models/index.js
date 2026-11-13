@@ -10,6 +10,23 @@ const initMessageModel = require('./MessageSequelize');
 
 let db = {};
 
+/**
+ * sync() never adds a column to a table that already exists, so a development
+ * database made before the session title column needs it added.
+ */
+const addTitleColumn = async (sequelize, ChatSession) => {
+  const queryInterface = sequelize.getQueryInterface();
+  const table = ChatSession.getTableName();
+  const columns = await queryInterface.describeTable(table);
+  if (columns.title) return false;
+
+  await queryInterface.addColumn(table, 'title', {
+    type: sequelize.Sequelize.STRING(100),
+    allowNull: true
+  });
+  return true;
+};
+
 const initializeModels = async () => {
   try {
     // Initialize database connection
@@ -60,6 +77,7 @@ const initializeModels = async () => {
     // Sync database schema (create tables) - only after models are defined
     if (process.env.NODE_ENV !== 'production') {
       await sequelize.sync({ force: false });
+      await addTitleColumn(sequelize, ChatSession);
       console.log('📊 Database schema synchronized');
     }
     
@@ -74,5 +92,6 @@ const initializeModels = async () => {
 
 module.exports = {
   initializeModels,
+  addTitleColumn,
   db
 };

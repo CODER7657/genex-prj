@@ -3,6 +3,7 @@
  * Individual messages within chat sessions
  */
 
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
@@ -25,7 +26,8 @@ const messageSchema = new mongoose.Schema({
   messageId: {
     type: String,
     unique: true,
-    required: true
+    required: true,
+    default: () => `msg_${crypto.randomUUID()}`
   },
   
   // Message content
@@ -248,13 +250,6 @@ messageSchema.virtual('ageFormatted').get(function() {
 messageSchema.virtual('hasCrisis').get(function() {
   return this.crisisAnalysis && this.crisisAnalysis.detected && 
          ['medium', 'high', 'critical'].includes(this.crisisAnalysis.severity);
-});
-
-// Pre-save middleware to generate messageId if not provided
-messageSchema.pre('save', async function() {
-  if (!this.messageId) {
-    this.messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
 });
 
 // Method to add sentiment analysis

@@ -84,12 +84,7 @@ router.post('/sessions',
       // Create new chat session
       const session = await req.app.locals.db.ChatSession.create({
         userId: userId,
-        title: title || `Chat Session ${new Date().toLocaleString()}`,
-        metadata: {
-          createdAt: new Date(),
-          userAgent: req.get('User-Agent'),
-          ip: req.ip
-        }
+        title: title || `Chat Session ${new Date().toLocaleString()}`
       });
 
       winston.info('New chat session created', { 
@@ -190,18 +185,11 @@ router.post('/message',
         // Create new session if none provided or not found
         chatSession = await req.app.locals.db.ChatSession.create({
           userId,
-          title: `Chat ${new Date().toLocaleDateString()}`,
-          metadata: {
-            autoCreated: true,
-            userAgent: req.get('User-Agent'),
-            ip: req.ip
-          }
+          title: `Chat ${new Date().toLocaleDateString()}`
         });
       } else {
         // Update last activity
-        await chatSession.update({ 
-          updatedAt: new Date() 
-        });
+        await chatSession.update({ lastActivity: new Date() });
       }
 
       // Process message through AI service
@@ -285,9 +273,13 @@ router.get('/sessions',
         limit: limit,
         offset: offset,
         attributes: ['id', 'title', 'createdAt', 'updatedAt'],
+        // separate: the newest message is fetched per session, which is what
+        // lets limit apply to each session instead of to the whole result.
         include: [{
           model: req.app.locals.db.Message,
-          attributes: ['id', 'message', 'sender', 'createdAt'],
+          as: 'messages',
+          separate: true,
+          attributes: ['id', 'sessionId', 'content', 'sender', 'createdAt'],
           limit: 1,
           order: [['createdAt', 'DESC']]
         }]
@@ -303,7 +295,7 @@ router.get('/sessions',
             title: session.title,
             createdAt: session.createdAt,
             updatedAt: session.updatedAt,
-            lastMessage: session.Messages?.[0] || null
+            lastMessage: session.messages?.[0] || null
           })),
           pagination: {
             page: page,
@@ -387,7 +379,7 @@ router.get('/sessions/:sessionId/messages',
         order: [['createdAt', 'ASC']], // Chronological order for chat
         limit: limit,
         offset: offset,
-        attributes: ['id', 'message', 'sender', 'createdAt', 'metadata']
+        attributes: ['id', 'content', 'sender', 'messageType', 'createdAt']
       });
 
       const totalPages = Math.ceil(count / limit);
@@ -567,9 +559,13 @@ router.get('/export',
         where: { userId: userId },
         include: [{
           model: req.app.locals.db.Message,
-          attributes: ['id', 'message', 'sender', 'createdAt', 'metadata']
+          as: 'messages',
+          attributes: ['id', 'content', 'sender', 'createdAt', 'aiMetadata']
         }],
-        order: [['createdAt', 'DESC']]
+        order: [
+          ['createdAt', 'DESC'],
+          [{ model: req.app.locals.db.Message, as: 'messages' }, 'createdAt', 'ASC']
+        ]
       });
       
       const exportData = {
@@ -581,13 +577,13 @@ router.get('/export',
           title: session.title,
           createdAt: session.createdAt,
           updatedAt: session.updatedAt,
-          messageCount: session.Messages?.length || 0,
-          messages: session.Messages?.map(msg => ({
+          messageCount: session.messages?.length || 0,
+          messages: session.messages?.map(msg => ({
             id: msg.id,
-            content: msg.message,
+            content: msg.content,
             sender: msg.sender,
             timestamp: msg.createdAt,
-            metadata: msg.metadata
+            metadata: msg.aiMetadata
           })) || []
         }))
       };
@@ -635,6 +631,7 @@ router.get('/stats',
         req.app.locals.db.Message.count({
           include: [{
             model: req.app.locals.db.ChatSession,
+            as: 'session',
             where: { userId },
             attributes: []
           }]

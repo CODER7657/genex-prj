@@ -97,7 +97,7 @@ the LLM risk judge. Keys live only in the git-ignored `.env`.
 
 ```bash
 cd backend
-npx jest           # 351 tests: routing guarantees, crisis gate, helplines, models on a real SQLite file,
+npx jest           # 374 tests: routing guarantees, crisis gate, helplines, models and chat routes on a real SQLite file,
                    # session store (5 of them need Redis and are skipped unless REDIS_TEST_URL is set)
 npm run lint
 

@@ -73,6 +73,10 @@ voice input and read-aloud (the browser's Web Speech API), in a soft Clay-style 
 is Express on Node, with SQLite in development and Postgres via `DATABASE_URL` in
 production.
 
+The mood check-ins, goals and reminders live in the browser. The API also has older
+`/api/users` and `/api/assessments` routes (profile, PHQ-9, GAD-7) written for MongoDB; the
+server does not connect to MongoDB, so they answer 503 and the app does not call them.
+
 ## Run it locally
 
 Needs Node 22+.
@@ -97,7 +101,7 @@ the LLM risk judge. Keys live only in the git-ignored `.env`.
 
 ```bash
 cd backend
-npx jest           # 374 tests: routing guarantees, crisis gate, helplines, models and chat routes on a real SQLite file,
+npx jest           # 386 tests: routing guarantees, crisis gate, helplines, models and chat routes on a real SQLite file,
                    # session store (5 of them need Redis and are skipped unless REDIS_TEST_URL is set)
 npm run lint
 

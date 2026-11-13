@@ -25,6 +25,7 @@ const { initRedis, createSessionConfig, healthCheck: redisHealthCheck } = requir
 
 // Import middleware
 const { authMiddleware, optionalAuthMiddleware } = require('./middlewares/auth');
+const { requireMongo } = require('./middlewares/mongoStore');
 const { 
   corsOptions, 
   rateLimiters, 
@@ -211,8 +212,10 @@ const setupRoutes = () => {
   // API routes
   app.use('/api/auth', authRoutes);
   app.use('/api/chat', authMiddleware, chatRoutes);
-  app.use('/api/users', authMiddleware, userRoutes);
-  app.use('/api/assessments', authMiddleware, assessmentRoutes);
+  // These two read and write through mongoose, which this server never
+  // connects: requireMongo answers 503 at once instead of letting them hang.
+  app.use('/api/users', authMiddleware, requireMongo, userRoutes);
+  app.use('/api/assessments', authMiddleware, requireMongo, assessmentRoutes);
   
   // Public route (with optional authentication)
   app.get('/api/public', optionalAuthMiddleware, (req, res) => {

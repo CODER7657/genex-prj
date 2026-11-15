@@ -109,17 +109,6 @@ class ApiService {
     return await this.request(`/chat/sessions/${sessionId}/messages?page=${page}&limit=${limit}`);
   }
 
-  async getChatHistory(sessionId?: string) {
-    const endpoint = sessionId ? `/chat/history/${sessionId}` : '/chat/history';
-    return await this.request(endpoint);
-  }
-
-  async startNewSession() {
-    return await this.request('/chat/session', {
-      method: 'POST',
-    });
-  }
-
   // Health check
   async healthCheck() {
     try {
